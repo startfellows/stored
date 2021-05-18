@@ -42,9 +42,9 @@ type ClusterStatus struct {
 
 // Connect is main constructor for creating connections
 func Connect(cluster string) *Cluster {
-	fdb.MustAPIVersion(510)
+	fdb.MustAPIVersion(630)
 	conn := Cluster{
-		db: fdb.MustOpen(cluster, []byte("DB")),
+		db: fdb.MustOpenDatabase(cluster),
 	}
 	return &conn
 }
