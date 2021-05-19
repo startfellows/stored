@@ -2,6 +2,7 @@ package stored
 
 import (
 	"fmt"
+	"math/rand"
 	"runtime"
 	"sort"
 	"time"
@@ -179,7 +180,7 @@ func (bs *benchmarkSuite) bmSimpleWrite(db *Cluster, n int) error {
 	for i := 0; i < n; i++ {
 		err := dir.Write(func(tr *Transaction) {
 			testObject := &benchmarkTestObject{
-				ID:        0,
+				ID:        int64(i),
 				Timestamp: time.Now().Unix(),
 				Online:    true,
 			}
@@ -196,7 +197,18 @@ func (bs *benchmarkSuite) bmSimpleWrite(db *Cluster, n int) error {
 }
 
 func (bs *benchmarkSuite) bmSimpleRead(db *Cluster, n int) error {
+	dir := db.Directory("benchmark")
+
 	for i := 0; i < n; i++ {
+		err := dir.Read(func(tr *Transaction) {
+			testObject := &benchmarkTestObject{ID: rand.Int63n(25000)}
+
+			bs.testObject.Get(testObject).Check(tr)
+		}).Err()
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
