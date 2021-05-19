@@ -32,7 +32,7 @@ func (res *benchmarkResult) BytesPerQuery() int {
 type benchmark struct {
 	name string
 	n    int
-	bm   func(*Cluster) error
+	bm   func(*Cluster, int) error
 }
 
 func (b *benchmark) run(db *Cluster) benchmarkResult {
@@ -45,7 +45,7 @@ func (b *benchmark) run(db *Cluster) benchmarkResult {
 		startTime       = time.Now()
 	)
 
-	err := b.bm(db)
+	err := b.bm(db, b.n)
 
 	endTime := time.Now()
 	runtime.ReadMemStats(&memStats)
@@ -65,11 +65,25 @@ type benchmarkSuite struct {
 	WarmUp      func(*Cluster) error
 	Repetitions int
 	PrintStats  bool
+
+	// Test objects
+	testObject *Object
 }
 
-func (bs *benchmarkSuite) AddBenchmark(name string, bm func(*Cluster) error) {
+func (bs *benchmarkSuite) Init() {
+	dir := bs.DB.Directory("benchmark")
+
+	testObjectDB := dir.Object("test_object", benchmarkTestObject{})
+	testObjectDB.Primary("id")
+	testObjectDB.AutoIncrement("id")
+
+	bs.testObject = testObjectDB.Done()
+}
+
+func (bs *benchmarkSuite) AddBenchmark(name string, n int, bm func(*Cluster, int) error) {
 	bs.benchmarks = append(bs.benchmarks, benchmark{
 		name: name,
+		n:    n,
 		bm:   bm,
 	})
 }
@@ -141,8 +155,8 @@ func (bs *benchmarkSuite) Run() {
 	fmt.Println("Finished... Total running time:", endTime.Sub(startTime).String())
 }
 
-// warmup not really necessary, but will be cool to
-func warmup(db *Cluster) error {
+// benchmarkWarmup not really necessary, but will be cool to
+func benchmarkWarmup(db *Cluster) error {
 	for i := 0; i < 1000; i++ {
 		_, err := db.Status()
 		if err != nil {
@@ -153,7 +167,38 @@ func warmup(db *Cluster) error {
 	return nil
 }
 
-func bmSimpleRead(db *Cluster) error {
+type benchmarkTestObject struct {
+	ID        int64 `stored:"id"`
+	Timestamp int64 `stored:"timestamp"`
+	Online    bool  `stored:"online,mutable"`
+}
+
+func (bs *benchmarkSuite) bmSimpleWrite(db *Cluster, n int) error {
+	dir := db.Directory("benchmark")
+
+	for i := 0; i < n; i++ {
+		err := dir.Write(func(tr *Transaction) {
+			testObject := &benchmarkTestObject{
+				ID:        0,
+				Timestamp: time.Now().Unix(),
+				Online:    true,
+			}
+
+			bs.testObject.Set(testObject).Check(tr)
+		}).Err()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (bs *benchmarkSuite) bmSimpleRead(db *Cluster, n int) error {
+	for i := 0; i < n; i++ {
+	}
+
 	return nil
 }
 
@@ -161,12 +206,15 @@ func bmSimpleRead(db *Cluster) error {
 func BenchmarksRun(db *Cluster) {
 	bs := benchmarkSuite{
 		DB:          db,
-		WarmUp:      warmup,
+		WarmUp:      benchmarkWarmup,
 		Repetitions: 3,
 		PrintStats:  true,
 	}
 
-	bs.AddBenchmark("SimpleRead", bmSimpleRead)
+	bs.Init()
+
+	bs.AddBenchmark("SimpleWrite", 25000, bs.bmSimpleWrite)
+	bs.AddBenchmark("SimpleRead", 250000, bs.bmSimpleRead)
 
 	bs.Run()
 }
