@@ -258,7 +258,7 @@ func (bs *benchmarkSuite) bmConcurrentRead(db *Cluster, n int) error {
 		go func() {
 			defer wg.Done()
 
-			for i := 0; i < n; i++ {
+			for i := 0; i < n/threads; i++ {
 				err := dir.Read(func(tr *Transaction) {
 					testObject := &benchmarkTestObject{ID: rand.Int63n(25000)}
 
