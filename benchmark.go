@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"runtime"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -214,6 +215,68 @@ func (bs *benchmarkSuite) bmSimpleRead(db *Cluster, n int) error {
 	return nil
 }
 
+func (bs *benchmarkSuite) bmSimpleReadWrite(db *Cluster, n int) error {
+	dir := db.Directory("benchmark")
+
+	for i := 0; i < n; i++ {
+		var err error
+
+		if n%10 == 0 {
+			err = dir.Write(func(tr *Transaction) {
+				testObject := &benchmarkTestObject{
+					ID:        rand.Int63n(25000),
+					Timestamp: time.Now().Unix(),
+					Online:    true,
+				}
+
+				bs.testObject.Set(testObject).Check(tr)
+			}).Err()
+		} else {
+			err = dir.Read(func(tr *Transaction) {
+				testObject := &benchmarkTestObject{ID: rand.Int63n(25000)}
+
+				bs.testObject.Get(testObject).Check(tr)
+			}).Err()
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (bs *benchmarkSuite) bmConcurrentRead(db *Cluster, n int) error {
+	dir := db.Directory("benchmark")
+
+	var wg sync.WaitGroup
+	threads := 100
+
+	for c := 0; c < threads; c++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for i := 0; i < n; i++ {
+				err := dir.Read(func(tr *Transaction) {
+					testObject := &benchmarkTestObject{ID: rand.Int63n(25000)}
+
+					bs.testObject.Get(testObject).Check(tr)
+				}).Err()
+
+				if err != nil {
+					panic(err)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	return nil
+}
+
 // BenchmarksRun runs benchmarks for STORED FoundationDB layer
 func BenchmarksRun(db *Cluster) {
 	bs := benchmarkSuite{
@@ -225,8 +288,10 @@ func BenchmarksRun(db *Cluster) {
 
 	bs.Init()
 
-	bs.AddBenchmark("SimpleWrite", 25000, bs.bmSimpleWrite)
+	//bs.AddBenchmark("SimpleWrite", 25000, bs.bmSimpleWrite)
 	bs.AddBenchmark("SimpleRead", 250000, bs.bmSimpleRead)
+	//bs.AddBenchmark("SimpleReadWrite", 25000, bs.bmSimpleReadWrite)
+	bs.AddBenchmark("ConcurrentRead", 250000, bs.bmConcurrentRead)
 
 	bs.Run()
 }
