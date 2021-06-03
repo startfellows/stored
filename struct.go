@@ -65,18 +65,36 @@ func (s *Struct) incField(field *Field, toInc interface{}) {
 	}
 }
 
-func (s *Struct) setSliceFieldValue(objField reflect.Value, value interface{}) reflect.Value {
-	valueSlice, ok := value.([]interface{})
-	if !ok {
-		fmt.Println("Filling slice with value slice failed: value slice empty or non existing")
-		return objField
-	}
+// checkNilPtrField check if objField is Nil reflect.Ptr
+// If yes, initializes underlying object and return it
+func (s *Struct) checkNilPtrField(objField reflect.Value) reflect.Value {
+	if objField.Kind() == reflect.Ptr {
+		if objField.IsNil() {
+			t := objField.Type().Elem()
+			newValue := reflect.New(t)
 
-	for _, i := range valueSlice {
-		objField = reflect.Append(objField, reflect.ValueOf(i))
+			objField.Set(newValue)
+		}
+
+		return reflect.Indirect(objField)
 	}
 
 	return objField
+}
+
+func (s *Struct) setSliceFieldValue(objField reflect.Value, value interface{}) {
+	valueSlice, ok := value.([]interface{})
+	if !ok {
+		fmt.Println("Filling slice with value slice failed: value slice empty or non existing")
+		return
+	}
+
+	newSlice := reflect.MakeSlice(objField.Type(), 0, len(valueSlice))
+	for _, i := range valueSlice {
+		newSlice = reflect.Append(newSlice, reflect.ValueOf(i))
+	}
+
+	objField.Set(newSlice)
 }
 
 func (s *Struct) setStructFieldValue(objStruct reflect.Value, value interface{}) {
@@ -86,13 +104,20 @@ func (s *Struct) setStructFieldValue(objStruct reflect.Value, value interface{})
 		return
 	}
 
+	objStruct = s.checkNilPtrField(objStruct)
+
 	for fieldName, fieldData := range valueMap {
 		field := objStruct.FieldByName(fieldName)
 		if reflect.ValueOf(field).IsZero() {
 			continue
 		}
 
-		switch field.Kind() {
+		fieldKind := field.Kind()
+		if fieldKind == reflect.Ptr {
+			fieldKind = field.Type().Elem().Kind()
+		}
+
+		switch fieldKind {
 		case reflect.Slice:
 			s.setSliceFieldValue(field, fieldData)
 		case reflect.Struct:
@@ -104,6 +129,8 @@ func (s *Struct) setStructFieldValue(objStruct reflect.Value, value interface{})
 }
 
 func (s *Struct) setFieldValue(objField reflect.Value, value interface{}) {
+	objField = s.checkNilPtrField(objField)
+
 	objField.Set(reflect.ValueOf(value))
 }
 
@@ -141,18 +168,23 @@ func (s *Struct) Fill(o *Object, v *Value) {
 			return
 		}
 
-		// This is ugly, I have truly recursive solution, but it will work for now.
+		// This is ugly, I have truly recursive solution in mind, but it will work for now.
 		for fieldName, fieldData := range combinedFields {
 			field, fok := o.immutableFields[fieldName]
 			if fok {
-				switch field.Kind {
+				fieldValue := s.value.Field(field.Num)
+				fieldKind := fieldValue.Kind()
+				if fieldKind == reflect.Ptr {
+					fieldKind = fieldValue.Type().Elem().Kind()
+				}
+
+				switch fieldKind {
 				case reflect.Slice:
-					newSlice := s.setSliceFieldValue(s.value.Field(field.Num), fieldData)
-					s.value.Field(field.Num).Set(newSlice)
+					s.setSliceFieldValue(fieldValue, fieldData)
 				case reflect.Struct:
-					s.setStructFieldValue(s.value.Field(field.Num), fieldData)
+					s.setStructFieldValue(fieldValue, fieldData)
 				default:
-					s.setFieldValue(s.value.Field(field.Num), fieldData)
+					s.setFieldValue(fieldValue, fieldData)
 				}
 			}
 		}
@@ -232,7 +264,7 @@ func (s *Struct) getType() reflect.Type {
 func structEditable(data interface{}) *Struct {
 	value := reflect.ValueOf(data)
 	if value.Kind() != reflect.Ptr {
-		panic("you should pass link to the object")
+		panic("you should pass pointer to the object")
 	}
 	value = value.Elem() // unpointer, interface still
 	input := Struct{

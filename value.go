@@ -145,7 +145,7 @@ func (v *Value) Scan(objectPtr interface{}) error {
 	return nil
 }
 
-// Reflect returns link to reflact value of object
+// Reflect returns link to reflect value of object
 func (v *Value) Reflect() (reflect.Value, error) {
 	if v.fetch != nil {
 		v.fetch()
@@ -169,10 +169,12 @@ func (v *Value) Reflect() (reflect.Value, error) {
 		}
 
 		//fmt.Println("filling interface", binaryValue)
+
 		val := field.ToInterface(binaryValue)
 		interfaceValue := reflect.ValueOf(val)
 		objField.Set(interfaceValue)
 	}
+
 	for key, interfaceValue := range v.decoded {
 		field, ok := v.object.mutableFields[key]
 		if !ok {
@@ -180,6 +182,7 @@ func (v *Value) Reflect() (reflect.Value, error) {
 		}
 		field.setTupleValue(value, interfaceValue)
 	}
+
 	return value, nil
 }
 

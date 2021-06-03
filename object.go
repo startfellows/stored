@@ -530,7 +530,7 @@ func (o *Object) Add(data interface{}) *PromiseErr {
 		for _, field := range o.getFields() {
 			if field.AutoIncrement {
 				incKey := o.miscDir.Pack(tuple.Tuple{"ai", field.Name})
-				p.tr.Add(incKey, field.packed.Plus())
+				p.tr.Add(incKey, GetPlus(field.Kind))
 				autoIncrementValue := p.tr.Get(incKey).MustGet()
 				input.setField(field, autoIncrementValue)
 			} else if field.GenID != 0 {

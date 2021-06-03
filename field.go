@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
-
-	"github.com/swork9/stored/packed"
 )
 
 var typeOfBytes = reflect.TypeOf([]byte(nil))
@@ -28,12 +28,7 @@ type Field struct {
 	primary       bool
 	AutoIncrement bool
 	GenID         GenIDType // type of ID autogeneration, IDDate, IDRandom
-	packed        *packed.Packed
-	UnStored      bool // means this field would not be stored inside main object
-}
-
-func (f *Field) init() {
-	f.packed = packed.New(f.Value)
+	UnStored      bool      // means this field would not be stored inside main object
 }
 
 // Tag is general object for tag parsing
@@ -154,7 +149,7 @@ func (f *Field) BytesFromObject(objectValue interface{}) ([]byte, error) {
 
 // ToBytes packs interface field value to bytes
 func (f *Field) ToBytes(val interface{}) ([]byte, error) {
-	return f.packed.Encode(val)
+	return msgpack.Marshal(val)
 }
 
 func (f *Field) tupleElement(val interface{}) tuple.TupleElement {
@@ -187,9 +182,13 @@ func (f *Field) getKey(sub subspace.Subspace) fdb.Key {
 
 // ToInterface decodes field value
 func (f *Field) ToInterface(obj []byte) interface{} {
-	val := f.packed.DecodeToInterface(obj)
+	var i interface{}
+	err := msgpack.Unmarshal(obj, &i)
+	if err != nil {
+		fmt.Println("ToInterface failed:", err)
+	}
 
-	return val
+	return i
 }
 
 func (f *Field) panic(text string) {

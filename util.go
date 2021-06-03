@@ -3,9 +3,12 @@ package stored
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
@@ -188,4 +191,16 @@ func ID64() (id int64) {
 	id = time.Now().UnixNano()
 	id += rand.Int63n(1000000) - 500000
 	return
+}
+
+// LogJSON will show the json representation of logged content
+// Copied from zero to minimize dependencies
+func LogJSON(objs ...interface{}) {
+	jsons := []string{}
+	for i := 0; i < len(objs); i++ {
+		json, _ := json.Marshal(objs[i])
+		jsons = append(jsons, string(json))
+	}
+
+	fmt.Println(strings.Join(jsons, " "))
 }

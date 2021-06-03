@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/capturetechnologies/stored/packed"
 )
 
 type user struct {
@@ -1071,8 +1069,6 @@ func testsSingleField(dir *Directory) error {
 
 // TestsRun runs tests for STORED FoundationdDB layer
 func TestsRun(db *Cluster) {
-	packed.Test()
-
 	dir := db.Directory("tests")
 	smUser := dir.Object("setget", user{})
 	smUserIndex := dir.Object("index", user{})

@@ -43,11 +43,12 @@ func (ob *ObjectBuilder) buildScheme(schemeObj interface{}) {
 			Type:   t.Field(i),
 			Value:  v.Field(i),
 		}
-		field.init()
+
 		field.Kind = field.Value.Kind()
 		if field.Kind == reflect.Slice {
 			field.SubKind = field.Value.Type().Elem().Kind()
 		}
+
 		tag := field.ParseTag()
 		if tag != nil {
 			field.Name = tag.Name
