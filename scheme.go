@@ -98,7 +98,7 @@ func (sf *schemeFull) buildCurrent(ob *ObjectBuilder) {
 	for _, field := range ob.object.primaryFields {
 		sf.current.PrimaryFields = append(sf.current.PrimaryFields, sf.current.wrapField(field))
 	}
-	for _, field := range ob.object.fields {
+	for _, field := range ob.object.getFields() {
 		if field.primary {
 			continue
 		}

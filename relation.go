@@ -527,11 +527,11 @@ func (r *Relation) doUpdateData(hostObj interface{}, clientObj interface{}, call
 			}
 			callback()
 			if doHost {
-				hostVal := hostEditable.GetBytes(r.hostDataField)
+				hostVal := hostEditable.GetMutableFieldBytes(r.hostDataField)
 				p.tr.Set(r.clientDir.Sub(clientPrimary...).Pack(hostPrimary), hostVal)
 			}
 			if doClient {
-				clientVal := clientEditable.GetBytes(r.clientDataField)
+				clientVal := clientEditable.GetMutableFieldBytes(r.clientDataField)
 				p.tr.Set(r.hostDir.Sub(hostPrimary...).Pack(clientPrimary), clientVal)
 			}
 			return p.done(nil)

@@ -157,7 +157,7 @@ func (v *Value) Reflect() (reflect.Value, error) {
 	}
 	value = value.Elem()
 	for key, binaryValue := range v.raw {
-		field, ok := v.object.fields[key]
+		field, ok := v.object.mutableFields[key]
 		if !ok {
 			//fmt.Println("field not found", key, "of object", v.object.name)
 			continue
@@ -174,7 +174,7 @@ func (v *Value) Reflect() (reflect.Value, error) {
 		objField.Set(interfaceValue)
 	}
 	for key, interfaceValue := range v.decoded {
-		field, ok := v.object.fields[key]
+		field, ok := v.object.mutableFields[key]
 		if !ok {
 			continue
 		}

@@ -195,10 +195,6 @@ func (o *benchmarkTestObject) Init() {
 	o.Name = randS(4096)
 	o.Bio = randS(4096)
 	o.Token = randS(4096)
-	o.Layers = randS(4096)
-	o.PhoneHash = randS(4096)
-	o.FacebookID = randS(4096)
-	o.VkID = randS(4096)
 	o.Online = rand.Int63()
 	o.Followers = rand.Int31()
 	o.Following = rand.Int31()
@@ -319,9 +315,9 @@ func BenchmarksRun(db *Cluster) {
 	bs.Init()
 
 	bs.AddBenchmark("SimpleWrite", 25000, bs.bmSimpleWrite)
-	bs.AddBenchmark("SimpleRead", 250000, bs.bmSimpleRead)
+	/*bs.AddBenchmark("SimpleRead", 250000, bs.bmSimpleRead)
 	bs.AddBenchmark("SimpleReadWrite", 25000, bs.bmSimpleReadWrite)
-	bs.AddBenchmark("ConcurrentRead", 250000, bs.bmConcurrentRead)
+	bs.AddBenchmark("ConcurrentRead", 250000, bs.bmConcurrentRead)*/
 
 	bs.Run()
 }

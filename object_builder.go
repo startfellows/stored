@@ -33,7 +33,8 @@ func (ob *ObjectBuilder) buildScheme(schemeObj interface{}) {
 	ob.mux.Lock()
 	o.reflectType = t
 	numfields := v.NumField()
-	o.fields = map[string]*Field{}
+	o.immutableFields = map[string]*Field{}
+	o.mutableFields = map[string]*Field{}
 	primaryFields := []string{}
 	for i := 0; i < numfields; i++ {
 		field := Field{
@@ -53,14 +54,18 @@ func (ob *ObjectBuilder) buildScheme(schemeObj interface{}) {
 			if tag.AutoIncrement {
 				field.SetAutoIncrement()
 			}
-			o.fields[tag.Name] = &field
 			if tag.Primary {
 				primaryFields = append(primaryFields, tag.Name)
 				//o.setPrimary(tag.Name)
 				//panic("not implemented yet")
 			}
 			if tag.mutable {
+				o.mutableFields[tag.Name] = &field
 				field.mutable = true
+				// ?
+				// } else if !tag.Primary {
+			} else {
+				o.immutableFields[tag.Name] = &field
 			}
 			if tag.UnStored {
 				field.UnStored = true
@@ -124,11 +129,7 @@ func (ob *ObjectBuilder) addFieldIndex(fieldKeys []string) *Index {
 
 	fields := make([]*Field, len(fieldKeys))
 	for k, keyName := range fieldKeys {
-		field, ok := ob.object.fields[keyName]
-		if !ok {
-			ob.panic("has no key «" + keyName + "» could not set index")
-		}
-		fields[k] = field
+		fields[k] = ob.object.field(keyName)
 	}
 	ob.mux.Unlock()
 
@@ -139,14 +140,8 @@ func (ob *ObjectBuilder) addFieldIndex(fieldKeys []string) *Index {
 
 func (ob *ObjectBuilder) addGeoIndex(latKey, longKey, indexKey string) *Index {
 	ob.mux.Lock()
-	latField, ok := ob.object.fields[latKey]
-	if !ok {
-		ob.panic("has no key «" + latKey + "» could not set index")
-	}
-	longField, ok := ob.object.fields[longKey]
-	if !ok {
-		ob.panic("has no key «" + longKey + "» could not set index")
-	}
+	latField := ob.object.field(latKey)
+	longField := ob.object.field(longKey)
 	ob.mux.Unlock()
 
 	index := ob.addIndex(indexKey)
@@ -186,10 +181,7 @@ func (ob *ObjectBuilder) Done() *Object {
 func (ob *ObjectBuilder) Primary(names ...string) *ObjectBuilder {
 	ob.mux.Lock()
 	for _, name := range names {
-		_, ok := ob.object.fields[name]
-		if !ok {
-			ob.panic("has no key «" + name + "» could not set primar")
-		}
+		_ = ob.object.field(name)
 	}
 	//ob.object.setPrimary(names...)
 	o := ob.object
@@ -208,8 +200,8 @@ func (ob *ObjectBuilder) Primary(names ...string) *ObjectBuilder {
 
 	if len(names) > 1 {
 		o.primaryFields = []*Field{}
-		for _, name := range names {
-			field := o.fields[name]
+		for _, rangeName := range names {
+			field := o.field(rangeName)
 			field.primary = true
 			o.primaryFields = append(o.primaryFields, field)
 		}
@@ -217,7 +209,7 @@ func (ob *ObjectBuilder) Primary(names ...string) *ObjectBuilder {
 		o.multiplePrimary = true
 	} else {
 		o.primaryKey = name
-		field := o.fields[name]
+		field := o.field(name)
 		field.primary = true
 		o.primaryFields = []*Field{field}
 	}
@@ -243,12 +235,10 @@ func (ob *ObjectBuilder) Primary(names ...string) *ObjectBuilder {
 // field type should be int64
 func (ob *ObjectBuilder) IDDate(fieldName string) *ObjectBuilder {
 	ob.mux.Lock()
-	field, ok := ob.object.fields[fieldName]
-	if !ok {
-		ob.panic("has no key «" + fieldName + "» could not set uuid")
-	}
-	ob.mux.Unlock()
+	field := ob.object.field(fieldName)
 	field.SetID(GenIDDate)
+	ob.mux.Unlock()
+
 	return ob
 }
 
@@ -256,12 +246,10 @@ func (ob *ObjectBuilder) IDDate(fieldName string) *ObjectBuilder {
 // if you whant randomly distribute objects, and you do not whant to unveil data object
 func (ob *ObjectBuilder) IDRandom(fieldName string) *ObjectBuilder {
 	ob.mux.Lock()
-	field, ok := ob.object.fields[fieldName]
-	if !ok {
-		ob.panic("no key «" + fieldName + "» could not set uuid")
-	}
+	field := ob.object.field(fieldName)
 	field.SetID(GenIDRandom)
 	ob.mux.Unlock()
+
 	return ob
 }
 
@@ -269,12 +257,10 @@ func (ob *ObjectBuilder) IDRandom(fieldName string) *ObjectBuilder {
 //
 func (ob *ObjectBuilder) AutoIncrement(name string) *ObjectBuilder {
 	ob.mux.Lock()
-	field, ok := ob.object.fields[name]
-	if !ok {
-		ob.panic("has no key «" + name + "» could not set autoincrement")
-	}
+	field := ob.object.field(name)
 	field.SetAutoIncrement()
 	ob.mux.Unlock()
+
 	return ob
 }
 
@@ -311,10 +297,7 @@ func (ob *ObjectBuilder) IndexOptional(names ...string) *ObjectBuilder {
 func (ob *ObjectBuilder) FastIndex(names ...string) *ObjectBuilder {
 	ob.mux.Lock()
 	for _, name := range names {
-		_, ok := ob.object.fields[name]
-		if !ok {
-			ob.panic("has no key «" + name + "» could not set primar")
-		}
+		_ = ob.object.field(name)
 	}
 	ob.mux.Unlock()
 	// init fast index here
@@ -344,7 +327,7 @@ func (ob *ObjectBuilder) IndexCustom(key string, cb func(object interface{}) Key
 // IndexSearch will add serchable index which will allow
 func (ob *ObjectBuilder) IndexSearch(key string, options ...IndexOption) *IndexSearch {
 	index := ob.addFieldIndex([]string{key})
-	field := ob.object.fields[key]
+	field := ob.object.field(key)
 	if field.Kind != reflect.String {
 		ob.panic("field " + key + " should be string for IndexSearch")
 	}
@@ -352,6 +335,7 @@ func (ob *ObjectBuilder) IndexSearch(key string, options ...IndexOption) *IndexS
 		index.SetOption(opt)
 	}
 	index.search = true
+
 	return &IndexSearch{index: index}
 }
 
@@ -360,10 +344,7 @@ func (ob *ObjectBuilder) Counter(fieldNames ...string) *Counter {
 	fields := []*Field{}
 	ob.mux.Lock()
 	for _, fieldName := range fieldNames {
-		field, ok := ob.object.fields[fieldName]
-		if !ok {
-			ob.panic("has no key «" + fieldName + "» could not set counter")
-		}
+		field := ob.object.field(fieldName)
 		fields = append(fields, field)
 	}
 	ob.mux.Unlock()

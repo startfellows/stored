@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/capturetechnologies/stored/packed"
-
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
+
+	"github.com/swork9/stored/packed"
 )
 
 var typeOfBytes = reflect.TypeOf([]byte(nil))
@@ -148,6 +148,7 @@ func (f *Field) BytesFromObject(objectValue interface{}) ([]byte, error) {
 		f.panic("object should be struct, not value")
 	}
 	fieldValue := object.Field(f.Num)
+
 	return f.ToBytes(fieldValue.Interface())
 }
 
@@ -187,6 +188,7 @@ func (f *Field) getKey(sub subspace.Subspace) fdb.Key {
 // ToInterface decodes field value
 func (f *Field) ToInterface(obj []byte) interface{} {
 	val := f.packed.DecodeToInterface(obj)
+
 	return val
 }
 
@@ -235,9 +237,10 @@ func (f *Field) GenerateID() []byte {
 }
 
 func fieldsKey(fields []*Field) string {
-	str := []string{}
+	var str []string
 	for _, f := range fields {
 		str = append(str, f.Name)
 	}
+
 	return strings.Join(str, ",")
 }

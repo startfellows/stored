@@ -23,7 +23,8 @@ type Object struct {
 	dir             directory.DirectorySubspace
 	miscDir         directory.DirectorySubspace
 	primary         directory.DirectorySubspace
-	fields          map[string]*Field
+	immutableFields map[string]*Field
+	mutableFields   map[string]*Field
 	indexes         map[string]*Index
 	counters        map[string]*Counter
 	Relations       []*Relation
@@ -85,11 +86,28 @@ func (o *Object) log(text string) {
 
 // field return field using name, panic an error if no field presented
 func (o *Object) field(fieldName string) *Field {
-	field, ok := o.fields[fieldName]
+	field, ok := o.immutableFields[fieldName]
 	if !ok {
-		o.panic("field «" + fieldName + "» not found")
+		field, ok = o.mutableFields[fieldName]
+		if !ok {
+			o.panic("field «" + fieldName + "» not found")
+		}
 	}
 	return field
+}
+
+// getFields return mutable and immutable fields as slice, combined.
+func (o *Object) getFields() []*Field {
+	ret := make([]*Field, 0, len(o.immutableFields)+len(o.mutableFields))
+
+	for _, v := range o.immutableFields {
+		ret = append(ret, v)
+	}
+	for _, v := range o.mutableFields {
+		ret = append(ret, v)
+	}
+
+	return ret
 }
 
 func (o *Object) getPrimarySub(objOrID interface{}) subspace.Subspace {
@@ -132,11 +150,8 @@ func (o *Object) getPrimaryField() *Field {
 	if o.primaryKey == "" {
 		panic("Object " + o.name + " has no primary key")
 	}
-	field, ok := o.fields[o.primaryKey]
-	if !ok {
-		panic("Object " + o.name + " has invalid primary field")
-	}
-	return field
+
+	return o.field(o.primaryKey)
 }
 
 func (o *Object) doWrite(tr fdb.Transaction, sub subspace.Subspace, primaryTuple tuple.Tuple, input, oldObject *Struct, addNew bool) error {
@@ -149,23 +164,30 @@ func (o *Object) doWrite(tr fdb.Transaction, sub subspace.Subspace, primaryTuple
 		tr.ClearRange(fdb.KeyRange{Begin: start, End: end})
 	}
 
-	fieldsWriten := 0
-	for _, field := range o.fields {
+	fieldsWritten := 0
+	for _, field := range o.mutableFields {
 		if field.UnStored {
 			continue
 		}
 		// primary fields should not be stored inside the object,
-		// because could be extraced from the key
+		// because could be extracted from the key
 		if field.primary {
 			continue
 		}
 
-		value := input.GetBytes(field)
+		value := input.GetMutableFieldBytes(field)
 		tr.Set(field.getKey(sub), value)
-		fieldsWriten++
+		fieldsWritten++
 	}
-	if fieldsWriten == 0 {
-		// write empty field to be shure that object will be written
+
+	immutablesValue := input.GetImmutableFieldsBytes(o.immutableFields)
+	if immutablesValue != nil {
+		tr.Set(sub.Pack(tuple.Tuple{"*"}), immutablesValue)
+		fieldsWritten++
+	}
+
+	if fieldsWritten == 0 {
+		// write empty field to be sure that object will be written
 		tr.Set(sub.FDBKey(), []byte{})
 	}
 
@@ -173,7 +195,7 @@ func (o *Object) doWrite(tr fdb.Transaction, sub subspace.Subspace, primaryTuple
 		//fmt.Println("WRITE index", primaryTuple, input)
 		err := index.Write(tr, primaryTuple, input, oldObject)
 		if err != nil {
-			fmt.Println("INDEX WRITE ERROR", index.Name, err)
+			panic(fmt.Sprintln("INDEX WRITE ERROR", index.Name, err))
 			return err
 		}
 	}
@@ -327,6 +349,7 @@ func (o *Object) Set(objectPtr interface{}) *PromiseErr {
 			if err != nil {
 				p.fail(err)
 			}
+
 			return p.ok()
 		}
 	})
@@ -457,7 +480,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 	field := o.field(fieldName)
 	p := o.promiseErr()
 	p.do(func() Chain {
-		bytesValue := input.GetBytes(field)
+		bytesValue := input.GetMutableFieldBytes(field)
 		//sub := input.getSubspace(o)
 		primaryTuple := input.getPrimary(o)
 		sub := o.sub(primaryTuple)
@@ -504,7 +527,7 @@ func (o *Object) Add(data interface{}) *PromiseErr {
 	input := structEditable(data)
 	p := o.promiseErr()
 	p.do(func() Chain {
-		for _, field := range o.fields {
+		for _, field := range o.getFields() {
 			if field.AutoIncrement {
 				incKey := o.miscDir.Pack(tuple.Tuple{"ai", field.Name})
 				p.tr.Add(incKey, field.packed.Plus())
@@ -669,13 +692,17 @@ func (o *Object) Get(objectPtr interface{}) *PromiseErr {
 		needed := o.need(p.readTr, input.getSubspace(o))
 		return func() Chain {
 			res, err := needed.fetch()
+
 			if err != nil {
 				return p.fail(err)
 			}
+
 			input.Fill(o, res)
+
 			return p.done(nil)
 		}
 	})
+
 	return p
 }
 
