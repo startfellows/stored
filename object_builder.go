@@ -1,6 +1,7 @@
 package stored
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -60,18 +61,25 @@ func (ob *ObjectBuilder) buildScheme(schemeObj interface{}) {
 				//o.setPrimary(tag.Name)
 				//panic("not implemented yet")
 			}
-			if tag.mutable {
-				o.mutableFields[tag.Name] = &field
-				field.mutable = true
-				// ?
-				// } else if !tag.Primary {
-			} else {
-				o.immutableFields[tag.Name] = &field
-			}
+
 			if tag.UnStored {
 				field.UnStored = true
 			} else {
 				o.keysCount++
+			}
+
+			if tag.mutable {
+				o.mutableFields[tag.Name] = &field
+				field.mutable = true
+			} else {
+				if field.UnStored {
+					fmt.Printf("Looks like you are using field %s:%s for N2N (via `unstored`), it's impossible with immutable fields for now, so STORED will mark this field as mutable, sorry.\n", o.name, field.Name)
+					o.mutableFields[tag.Name] = &field
+					field.mutable = true
+				} else {
+					// Do we want to store id as immutable field? Looks like yes, due panics about it
+					o.immutableFields[tag.Name] = &field
+				}
 			}
 			// init unique field here, tmp disabled, need to test
 			//if tag.unique {

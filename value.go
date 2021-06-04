@@ -171,8 +171,10 @@ func (v *Value) Reflect() (reflect.Value, error) {
 		//fmt.Println("filling interface", binaryValue)
 
 		val := field.ToInterface(binaryValue)
-		interfaceValue := reflect.ValueOf(val)
-		objField.Set(interfaceValue)
+		//interfaceValue := reflect.ValueOf(val)
+
+		setMsgPackObject(objField, val)
+		//objField.Set(interfaceValue)
 	}
 
 	for key, interfaceValue := range v.decoded {
@@ -180,7 +182,13 @@ func (v *Value) Reflect() (reflect.Value, error) {
 		if !ok {
 			continue
 		}
+
 		field.setTupleValue(value, interfaceValue)
+	}
+
+	immutableFieldsData, ok := v.raw["*"]
+	if ok {
+		fillObjectImmutableFields(v.object, value, immutableFieldsData)
 	}
 
 	return value, nil

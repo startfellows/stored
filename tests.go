@@ -890,7 +890,7 @@ func testsN2NClientCounter(dir *Directory) error {
 	type cht struct {
 		ID         int    `stored:"id"`
 		Name       string `stored:"cht"`
-		MembsCount int64  `stored:"membs_count"`
+		MembsCount int64  `stored:"membs_count,mutable"`
 	}
 	user := dir.Object("n2n_counter_user", usr{})
 	user.AutoIncrement("id")

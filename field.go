@@ -39,7 +39,6 @@ type Tag struct {
 	unique        bool
 	AutoIncrement bool
 	UnStored      bool // means this field doesn't stored inside main object data
-
 }
 
 // ParseTag converts object stored tag to sturct with options

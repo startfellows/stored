@@ -186,23 +186,9 @@ func (s *Struct) Fill(o *Object, v *Value) {
 		}
 	}
 
-	immutablesValue, ok := v.raw["*"]
+	immutableFieldsData, ok := v.raw["*"]
 	if ok {
-		combinedFields := map[string]interface{}{}
-		err := msgpack.Unmarshal(immutablesValue, &combinedFields)
-		if err != nil {
-			fmt.Println("Fill failed:", err)
-			return
-		}
-
-		for fieldName, fieldData := range combinedFields {
-			field, fok := o.immutableFields[fieldName]
-			if fok {
-				fieldObj := s.value.Field(field.Num)
-
-				s.setObject(fieldObj, fieldData)
-			}
-		}
+		fillObjectImmutableFields(o, s.value, immutableFieldsData)
 	}
 }
 
