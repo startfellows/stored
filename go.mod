@@ -1,4 +1,4 @@
-module github.com/swork9/stored
+module github.com/sflabsorg/stored
 
 go 1.16
 
