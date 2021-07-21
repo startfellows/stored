@@ -1,7 +1,6 @@
 package stored
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -73,7 +72,7 @@ func (ob *ObjectBuilder) buildScheme(schemeObj interface{}) {
 				field.mutable = true
 			} else {
 				if field.UnStored {
-					fmt.Printf("Looks like you are using field %s:%s for N2N (via `unstored`), it's impossible with immutable fields for now, so STORED will mark this field as mutable, sorry.\n", o.name, field.Name)
+					// Looks like an field is unstored, so it MUST be an mutable field, any way we would not write it anywhere
 					o.mutableFields[tag.Name] = &field
 					field.mutable = true
 				} else {

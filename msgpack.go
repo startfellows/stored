@@ -80,6 +80,61 @@ func setMsgPackMapObject(mapObject reflect.Value, value interface{}) {
 	}
 }
 
+// setMsgPackObjectGround is like setMsgPackObject but when field is predestemined
+func setMsgPackObjectGround(field *Field, obj reflect.Value, value interface{}) {
+	for {
+		if field.Kind != reflect.Ptr {
+			break
+		}
+
+		obj = checkNilPtrObject(obj)
+	}
+
+	switch field.Kind {
+	case reflect.Slice:
+		setMsgPackSliceObject(obj, value)
+	case reflect.Struct:
+		setMsgPackStructObject(obj, value)
+	case reflect.Map:
+		setMsgPackMapObject(obj, value)
+	case reflect.Bool:
+		switch v := value.(type) {
+		case int8:
+			if v == 0 {
+				obj.SetBool(false)
+			} else {
+				obj.SetBool(true)
+			}
+		case bool:
+			obj.SetBool(v)
+		}
+	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint, reflect.Uint32, reflect.Uint64, reflect.Int8, reflect.Uint8:
+		switch v := value.(type) {
+		case int8:
+			obj.SetInt(int64(v))
+		case uint8:
+			obj.SetInt(int64(v))
+		case int32:
+			obj.SetInt(int64(v))
+		case uint32:
+			obj.SetInt(int64(v))
+		case uint64:
+			obj.SetInt(int64(v))
+		case int64:
+			obj.SetInt(v)
+		}
+	case reflect.String:
+		switch v := value.(type) {
+		case string:
+			obj.SetString(v)
+		}
+	default:
+		objType := field.Type.Type
+		fmt.Println("fieldKIND", field.Kind, "name", field.Name, objType, value)
+		obj.Set(reflect.ValueOf(value).Convert(objType))
+	}
+}
+
 // setMsgPackObject setting obj from value with attempt to cast it to field type
 func setMsgPackObject(obj reflect.Value, value interface{}) {
 	for {
