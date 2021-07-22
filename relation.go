@@ -174,9 +174,7 @@ func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transac
 			panic(err)
 		}
 
-		fmt.Println("CLIENT i BEFORE", i)
 		i += value
-		fmt.Println("CLIENT i AFTER", i)
 
 		b, err = msgpack.Marshal(i)
 		if err != nil {
