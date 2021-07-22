@@ -142,27 +142,6 @@ func (r *Relation) ClientData(fieldName string) {
 	r.clientDataField = field
 }
 
-func (r *Relation) changeHostCounter(hostKey fdb.Key, tr fdb.Transaction, value int64) {
-	b := tr.Get(hostKey).MustGet()
-
-	var i int64
-	if b != nil {
-		err := msgpack.Unmarshal(b, &i)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	i += value
-
-	b, err := msgpack.Marshal(i)
-	if err != nil {
-		panic(err)
-	}
-
-	tr.Set(hostKey, b)
-}
-
 func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, value int64) {
 	if r.counterClient != nil {
 		sub := r.counterClient.object.sub(clientPrimary)
@@ -183,12 +162,16 @@ func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transac
 
 		tr.Set(r.counterClient.getKey(sub), b)
 	} else {
-		b, err := msgpack.Marshal(value)
-		if err != nil {
-			panic(err)
+		var binVal []byte
+		if value == -1 {
+			binVal = countDec
+		} else if value == 1 {
+			binVal = countInc
+		} else {
+			panic("incompatible value for client counter")
 		}
 
-		tr.Set(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), b)
+		tr.Add(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), binVal)
 	}
 }
 
@@ -213,7 +196,7 @@ func (r *Relation) Add(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 			p.fail(ErrAlreadyExist)
 		}
 		if r.counter { // increment if not exists
-			r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, 1)
+			p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
 			r.changeClientCounter(clientPrimary, p.tr, 1)
 		}
 
@@ -241,7 +224,7 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 				return p.fail(err)
 			}
 			if val == nil { // not exists increment here
-				r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, 1)
+				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
 				r.changeClientCounter(clientPrimary, p.tr, 1)
 			}
 		}
@@ -272,7 +255,7 @@ func (r *Relation) Delete(hostOrID interface{}, clientOrID interface{}) *Promise
 				return p.fail(err)
 			}
 			if val != nil { // exists decrement here
-				r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, -1)
+				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countDec)
 				r.changeClientCounter(clientPrimary, p.tr, -1)
 			}
 		}
@@ -307,13 +290,7 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 			return p.fail(err)
 		}
 
-		var resp int64
-		err = msgpack.Unmarshal(row, &resp)
-		if err != nil {
-			p.fail(err)
-		}
-
-		return p.done(resp)
+		return p.done(ToInt64(row))
 	})
 
 	return p
