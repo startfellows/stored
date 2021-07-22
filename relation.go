@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
@@ -140,12 +142,55 @@ func (r *Relation) ClientData(fieldName string) {
 	r.clientDataField = field
 }
 
-func (r *Relation) incClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, incVal []byte) {
+func (r *Relation) changeHostCounter(hostKey fdb.Key, tr fdb.Transaction, value int64) {
+	b := tr.Get(hostKey).MustGet()
+
+	var i int64
+	if b != nil {
+		err := msgpack.Unmarshal(b, &i)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	i += value
+
+	b, err := msgpack.Marshal(i)
+	if err != nil {
+		panic(err)
+	}
+
+	tr.Set(hostKey, b)
+}
+
+func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, value int64) {
 	if r.counterClient != nil {
 		sub := r.counterClient.object.sub(clientPrimary)
-		tr.Add(r.counterClient.getKey(sub), incVal)
+		b := tr.Get(r.counterClient.getKey(sub)).MustGet()
+
+		var i int64
+		err := msgpack.Unmarshal(b, &i)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("CLIENT i BEFORE", i)
+		i += value
+		fmt.Println("CLIENT i AFTER", i)
+
+		b, err = msgpack.Marshal(i)
+		if err != nil {
+			panic(err)
+		}
+
+		tr.Set(r.counterClient.getKey(sub), b)
 	} else {
-		tr.Add(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), incVal)
+		b, err := msgpack.Marshal(value)
+		if err != nil {
+			panic(err)
+		}
+
+		tr.Set(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), b)
 	}
 }
 
@@ -170,8 +215,8 @@ func (r *Relation) Add(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 			p.fail(ErrAlreadyExist)
 		}
 		if r.counter { // increment if not exists
-			p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-			r.incClientCounter(clientPrimary, p.tr, countInc)
+			r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, 1)
+			r.changeClientCounter(clientPrimary, p.tr, 1)
 		}
 
 		// getting data to store inside relation kv
@@ -198,9 +243,8 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 				return p.fail(err)
 			}
 			if val == nil { // not exists increment here
-				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-				//tr.Add(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), countInc)
-				r.incClientCounter(clientPrimary, p.tr, countInc)
+				r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, 1)
+				r.changeClientCounter(clientPrimary, p.tr, 1)
 			}
 		}
 
@@ -212,8 +256,10 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 
 		p.tr.Set(r.hostDir.Sub(hostPrimary...).Pack(clientPrimary), clientVal)
 		p.tr.Set(r.clientDir.Sub(clientPrimary...).Pack(hostPrimary), hostVal)
+
 		return p.ok()
 	})
+
 	return p
 }
 
@@ -228,15 +274,17 @@ func (r *Relation) Delete(hostOrID interface{}, clientOrID interface{}) *Promise
 				return p.fail(err)
 			}
 			if val != nil { // exists decrement here
-				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countDec)
-				//tr.Add(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), countDec)
-				r.incClientCounter(clientPrimary, p.tr, countDec)
+				r.changeHostCounter(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), p.tr, -1)
+				r.changeClientCounter(clientPrimary, p.tr, -1)
 			}
 		}
+
 		p.tr.Clear(r.hostDir.Sub(hostPrimary...).Pack(clientPrimary))
 		p.tr.Clear(r.clientDir.Sub(clientPrimary...).Pack(hostPrimary))
+
 		return p.ok()
 	})
+
 	return p
 }
 
@@ -260,8 +308,16 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 		if err != nil {
 			return p.fail(err)
 		}
-		return p.done(ToInt64(row))
+
+		var resp int64
+		err = msgpack.Unmarshal(row, &resp)
+		if err != nil {
+			p.fail(err)
+		}
+
+		return p.done(resp)
 	})
+
 	return p
 }
 
@@ -298,7 +354,14 @@ func (r *Relation) GetClientsCount(hostOrID interface{}) *Promise {
 		if err != nil {
 			return p.fail(err)
 		}
-		return p.done(ToInt64(row))
+
+		var resp int64
+		err = msgpack.Unmarshal(row, &resp)
+		if err != nil {
+			p.fail(err)
+		}
+
+		return p.done(resp)
 	})
 	return p
 }

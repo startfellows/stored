@@ -3,6 +3,7 @@ package stored
 import (
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Counter allow you to operate different counters inside your object
@@ -34,14 +35,35 @@ func counterNew(ob *ObjectBuilder, fields []*Field) *Counter {
 	return &ctr
 }
 
+func (c *Counter) change(tr fdb.Transaction, key fdb.Key, value int64) {
+	b := tr.Get(key).MustGet()
+
+	var i int64
+	if len(b) > 0 {
+		err := msgpack.Unmarshal(b, &i)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	i += value
+
+	b, err := msgpack.Marshal(i)
+	if err != nil {
+		panic(err)
+	}
+
+	tr.Set(key, b)
+}
+
 func (c *Counter) increment(tr fdb.Transaction, input *Struct) {
 	t := input.getTuple(c.fields)
-	tr.Add(c.dir.Pack(t), countInc)
+	c.change(tr, c.dir.Pack(t), 1)
 }
 
 func (c *Counter) decrement(tr fdb.Transaction, input *Struct) {
 	t := input.getTuple(c.fields)
-	tr.Add(c.dir.Pack(t), countDec)
+	c.change(tr, c.dir.Pack(t), -1)
 }
 
 // Get will get counter data
@@ -60,7 +82,15 @@ func (c *Counter) Get(data interface{}) *Promise {
 			return p.done(int64(0))
 			//return p.fail(ErrNotFound)
 		}
-		return p.done(ToInt64(bytes))
+
+		var resp int64
+		err = msgpack.Unmarshal(bytes, &resp)
+		if err != nil {
+			p.fail(err)
+		}
+
+		return p.done(resp)
 	})
+
 	return p
 }
