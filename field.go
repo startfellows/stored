@@ -229,7 +229,8 @@ func (f *Field) GenerateID() []byte {
 		default:
 			f.panic(fmt.Sprintf("GenID in undefined: %d", f.GenID))
 		}
-		return Int64(id)
+		data, _ := msgpack.Marshal(id)
+		return data
 	}
 	return []byte{}
 }

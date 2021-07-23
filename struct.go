@@ -169,10 +169,8 @@ func (s *Struct) Fill(o *Object, v *Value) {
 
 	for fieldName, binaryValue := range v.raw {
 		field, ok := o.mutableFields[fieldName]
-		if ok {
-			//if len(binaryValue) > 0 { // so raw should be empty in a first place
+		if ok && !field.UnStored {
 			s.setField(field, binaryValue)
-			//}
 		} else {
 			//o.log("unknown field «" + fieldName + "», skipping")
 			//nothing to worry about
