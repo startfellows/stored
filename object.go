@@ -534,7 +534,8 @@ func (o *Object) Add(data interface{}) *PromiseErr {
 				autoIncrementValue := p.tr.Get(incKey).MustGet()
 				input.setField(field, autoIncrementValue)
 			} else if field.GenID != 0 {
-				input.setField(field, field.GenerateID())
+				input.value.Field(field.Num).SetInt(field.GenerateID())
+				//input.setField(field, field.GenerateID()) //if generateID would be bytearray
 			}
 		}
 

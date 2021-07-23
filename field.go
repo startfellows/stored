@@ -215,7 +215,7 @@ func (f *Field) SetID(idType GenIDType) {
 }
 
 // GenerateID will return ID bytes for type specified
-func (f *Field) GenerateID() []byte {
+func (f *Field) GenerateID() int64 {
 	switch f.Kind {
 	case reflect.Int64, reflect.Uint64:
 		var id int64
@@ -229,10 +229,11 @@ func (f *Field) GenerateID() []byte {
 		default:
 			f.panic(fmt.Sprintf("GenID in undefined: %d", f.GenID))
 		}
-		data, _ := msgpack.Marshal(id)
-		return data
+		return id
+		//data, _ := msgpack.Marshal(id) // no marshaling
+		//return data
 	}
-	return []byte{}
+	return 0
 }
 
 func fieldsKey(fields []*Field) string {
