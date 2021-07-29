@@ -59,6 +59,7 @@ type bigUser struct {
 	Reactions    map[string]int `stored:"reactions"`
 	Subscription bool           `stored:"subscription"`
 	Sandbox      bool           `stored:"sandbox"`
+	Username     string         `stored:"username"`
 }
 
 type extra struct {
@@ -1035,6 +1036,31 @@ func testsGeoIndex(dir *Directory) error {
 	return nil
 }
 
+func testsAutocompleteSearch(dbUser *Object) error {
+	userObj := bigUser{
+		Login:    "wow",
+		Username: "test_test",
+	}
+	err := dbUser.Add(&userObj).Err()
+	if err != nil {
+		return err
+	}
+
+	//users := []bigUser{}
+	//err = dbUser.Use("username").List("test_test").ScanAll(&users)
+	//if err != nil {
+	//	return err
+	//}
+
+	//user := bigUser{Username: "test_test"}
+	//err = dbUser.GetBy(&user, "username").Err()
+	//if err != nil {
+	//	return err
+	//}
+	
+	return nil
+}
+
 func testsSingleField(dir *Directory) error {
 	type row struct {
 		ID int `stored:"id"`
@@ -1090,6 +1116,7 @@ func TestsRun(db *Cluster) {
 
 	dbBigUser := dir.Object("big_user", bigUser{})
 	dbBigUser.AutoIncrement("id")
+	dbBigUser.Unique("username")
 
 	dbMessage := dir.Object("message", message{})
 	dbMessage.Primary("chat_id", "id")
@@ -1126,5 +1153,8 @@ func TestsRun(db *Cluster) {
 	assert("geo_index", testsGeoIndex(dir))
 
 	assert("single_field", testsSingleField(dir))
+
+	assert("search_autocomplete_search", testsAutocompleteSearch(dbBigUser.Done()))
+
 	fmt.Println("elapsed", time.Since(start))
 }
