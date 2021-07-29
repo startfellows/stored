@@ -1046,18 +1046,19 @@ func testsAutocompleteSearch(dbUser *Object) error {
 		return err
 	}
 
-	//users := []bigUser{}
-	//err = dbUser.Use("username").List("test_test").ScanAll(&users)
-	//if err != nil {
-	//	return err
-	//}
+	users := []bigUser{}
+	indexSearch := IndexSearch{
+		dbUser.Use("username").index,
+	}
 
-	//user := bigUser{Username: "test_test"}
-	//err = dbUser.GetBy(&user, "username").Err()
-	//if err != nil {
-	//	return err
-	//}
-	
+	err = indexSearch.Search("test_t").ScanAll(&users)
+	if err != nil {
+		return err
+	}
+	if len(users) == 0 {
+		return errors.New("users not found")
+	}
+
 	return nil
 }
 
@@ -1117,6 +1118,7 @@ func TestsRun(db *Cluster) {
 	dbBigUser := dir.Object("big_user", bigUser{})
 	dbBigUser.AutoIncrement("id")
 	dbBigUser.Unique("username")
+	dbBigUser.IndexSearch("username", IndexOption{})
 
 	dbMessage := dir.Object("message", message{})
 	dbMessage.Primary("chat_id", "id")
