@@ -10,7 +10,7 @@ import (
 // IndexSearch provide  substring search index for strings. That means you can search by part of the word
 // this index is fast but could leave significant memory footpring on your database
 type IndexSearch struct {
-	index *Index
+	Index *Index
 }
 
 // Search is main function to search using search index
@@ -18,7 +18,7 @@ func (is *IndexSearch) Search(name string) *PromiseSlice {
 	words := searchSplit(name)
 
 	//word := words[0]
-	i := is.index
+	i := is.Index
 	p := i.object.promiseSlice()
 	wordsLen := len(words)
 	p.doRead(func() Chain {
@@ -93,10 +93,10 @@ func (is *IndexSearch) Search(name string) *PromiseSlice {
 
 // ClearAll will remove index data
 func (is *IndexSearch) ClearAll() error {
-	return is.index.ClearAll()
+	return is.Index.ClearAll()
 }
 
 // Reindex will reindex index data
 func (is *IndexSearch) Reindex() {
-	is.index.Reindex()
+	is.Index.Reindex()
 }

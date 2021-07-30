@@ -1047,9 +1047,8 @@ func testsAutocompleteSearch(dbUser *Object) error {
 	}
 
 	users := []bigUser{}
-	indexSearch := IndexSearch{
-		dbUser.Use("username").index,
-	}
+	index := dbUser.Use("username").Index
+	indexSearch := IndexSearch{index}
 
 	err = indexSearch.Search("test_t").ScanAll(&users)
 	if err != nil {
@@ -1117,7 +1116,6 @@ func TestsRun(db *Cluster) {
 
 	dbBigUser := dir.Object("big_user", bigUser{})
 	dbBigUser.AutoIncrement("id")
-	dbBigUser.Unique("username")
 	dbBigUser.IndexSearch("username", IndexOption{})
 
 	dbMessage := dir.Object("message", message{})
