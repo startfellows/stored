@@ -14,7 +14,7 @@ import (
 // Query is interface for query building
 type Query struct {
 	object  *Object
-	Index   *Index
+	index   *Index
 	primary tuple.Tuple
 	from    tuple.Tuple
 	to      tuple.Tuple
@@ -33,7 +33,7 @@ func (q *Query) Use(indexFieldNames ...string) *Query {
 	indexName := strings.Join(indexFieldNames, ",")
 	for key, i := range q.object.indexes {
 		if key == indexName {
-			q.Index = i
+			q.index = i
 			return q
 		}
 	}
@@ -82,7 +82,7 @@ func (q *Query) List(values ...interface{}) *Query {
 		}
 	}
 
-	if q.Index == nil {
+	if q.index == nil {
 		maxFields := len(q.object.primaryFields)
 		if len(q.primary) >= maxFields {
 			q.object.panic("List should have less than " + strconv.Itoa(maxFields) + " params (number of primary keys)")
@@ -164,15 +164,15 @@ func (q *Query) execute() *PromiseSlice {
 	keyLen := len(q.object.primaryFields)
 	p := q.object.promiseSlice()
 	p.doRead(func() Chain {
-		if q.Index != nil { // select using index
+		if q.index != nil { // select using index
 			if q.onlyPrimary {
-				slice, err := q.Index.getPrimariesList(p.readTr, q)
+				slice, err := q.index.getPrimariesList(p.readTr, q)
 				if err != nil {
 					return p.fail(err)
 				}
 				return p.done(slice)
 			}
-			values, err := q.Index.getList(p.readTr, q)
+			values, err := q.index.getList(p.readTr, q)
 			if err != nil {
 				return p.fail(err)
 			}

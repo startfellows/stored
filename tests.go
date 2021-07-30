@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var dbUsernameSearchIndex *IndexSearch
+
 type user struct {
 	ID    int    `stored:"id,primary"`
 	Login string `stored:"login"`
@@ -1047,10 +1049,7 @@ func testsAutocompleteSearch(dbUser *Object) error {
 	}
 
 	users := []bigUser{}
-	index := dbUser.Use("username").Index
-	indexSearch := IndexSearch{index}
-
-	err = indexSearch.Search("test_t").ScanAll(&users)
+	err = dbUsernameSearchIndex.Search("test_t").ScanAll(&users)
 	if err != nil {
 		return err
 	}
@@ -1116,6 +1115,8 @@ func TestsRun(db *Cluster) {
 
 	dbBigUser := dir.Object("big_user", bigUser{})
 	dbBigUser.AutoIncrement("id")
+	dbUsernameSearchIndex = dbBigUser.IndexSearch("username", IndexOption{})
+
 	dbBigUser.IndexSearch("username", IndexOption{})
 
 	dbMessage := dir.Object("message", message{})

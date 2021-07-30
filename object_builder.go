@@ -344,7 +344,7 @@ func (ob *ObjectBuilder) IndexSearch(key string, options ...IndexOption) *IndexS
 	}
 	index.search = true
 
-	return &IndexSearch{Index: index}
+	return &IndexSearch{index: index}
 }
 
 // Counter will count all objects with same value of passed fields
