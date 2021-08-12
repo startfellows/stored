@@ -189,15 +189,13 @@ func (f *Field) ToInterface(obj []byte) interface{} {
 	return i
 }
 
-func SetToField(obj []byte, objField reflect.Value) interface{} {
+func SetToField(obj []byte, objField reflect.Value) {
 	i := objField.Addr().Interface()
 
 	err := msgpack.Unmarshal(obj, i)
 	if err != nil {
 		fmt.Println("SetToField failed:", err)
 	}
-
-	return i
 }
 
 func (f *Field) panic(text string) {

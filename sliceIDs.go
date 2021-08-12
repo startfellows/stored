@@ -90,10 +90,6 @@ func (s *SliceIDs) ScanAll(slicePointer interface{}) (e error) {
 
 			} else {
 				SetToField(value, objField)
-				//inter := SetToField(value, objField)
-				//ri := reflect.ValueOf(inter).Elem()
-				//rf := reflect.NewAt(ri.Type(), unsafe.Pointer(ri.UnsafeAddr())).Elem()
-				//objField.Set(rf)
 			}
 			//HERE
 		}
