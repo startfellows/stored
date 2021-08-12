@@ -2,10 +2,8 @@ package stored
 
 import (
 	"errors"
-	"reflect"
-	"unsafe"
-
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
+	"reflect"
 )
 
 // SliceIDs is slice that contain  only int64 data
@@ -91,10 +89,11 @@ func (s *SliceIDs) ScanAll(slicePointer interface{}) (e error) {
 				objField.Set(newFieldObject)
 
 			} else {
-				inter := SetToField(value, objField)
-				ri := reflect.ValueOf(inter).Elem()
-				rf := reflect.NewAt(ri.Type(), unsafe.Pointer(ri.UnsafeAddr())).Elem()
-				objField.Set(rf)
+				SetToField(value, objField)
+				//inter := SetToField(value, objField)
+				//ri := reflect.ValueOf(inter).Elem()
+				//rf := reflect.NewAt(ri.Type(), unsafe.Pointer(ri.UnsafeAddr())).Elem()
+				//objField.Set(rf)
 			}
 			//HERE
 		}
