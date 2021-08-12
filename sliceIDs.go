@@ -1,10 +1,9 @@
 package stored
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
+	"unsafe"
 
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
 )
@@ -92,21 +91,11 @@ func (s *SliceIDs) ScanAll(slicePointer interface{}) (e error) {
 				objField.Set(newFieldObject)
 
 			} else {
-
-				keyInterface := s.dataField.ToInterface(value)
-				interfaceValueNotInter := reflect.ValueOf(keyInterface)
-
-				fmt.Println()
-				fmt.Println(objField)
-				fmt.Println(keyInterface)
-				fmt.Println(interfaceValueNotInter)
-				fmt.Println()
-
-				interfaceValue := reflect.ValueOf(keyInterface).Interface()
-				byteValue, _ := json.Marshal(interfaceValue)
-				inter := SetToField(byteValue, &objField)
-				fmt.Println(inter)
-				}
+				inter := SetToField(value, objField)
+				ri := reflect.ValueOf(inter).Elem()
+				rf := reflect.NewAt(ri.Type(), unsafe.Pointer(ri.UnsafeAddr())).Elem()
+				objField.Set(rf)
+			}
 			//HERE
 		}
 

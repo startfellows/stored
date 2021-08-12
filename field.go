@@ -189,8 +189,8 @@ func (f *Field) ToInterface(obj []byte) interface{} {
 	return i
 }
 
-func SetToField(obj []byte, objField *reflect.Value) interface{} {
-	i := objField.Interface()
+func SetToField(obj []byte, objField reflect.Value) interface{} {
+	i := objField.Addr().Interface()
 
 	err := msgpack.Unmarshal(obj, i)
 	if err != nil {
