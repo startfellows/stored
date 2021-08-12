@@ -2,11 +2,10 @@ package stored
 
 import (
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
 	"math/rand"
 	"reflect"
 	"strings"
-
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/apple/foundationdb/bindings/go/src/fdb"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
@@ -185,6 +184,17 @@ func (f *Field) ToInterface(obj []byte) interface{} {
 	err := msgpack.Unmarshal(obj, &i)
 	if err != nil {
 		fmt.Println("ToInterface failed:", err)
+	}
+
+	return i
+}
+
+func SetToField(obj []byte, objField *reflect.Value) interface{} {
+	i := objField.Interface()
+
+	err := msgpack.Unmarshal(obj, i)
+	if err != nil {
+		fmt.Println("SetToField failed:", err)
 	}
 
 	return i
