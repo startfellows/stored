@@ -480,12 +480,12 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 	field := o.field(fieldName)
 	p := o.promiseErr()
 	p.do(func() Chain {
-		bytesValue := input.GetMutableFieldBytes(field)
+		//bytesValue := input.GetMutableFieldBytes(field)
 		//sub := input.getSubspace(o)
 		primaryTuple := input.getPrimary(o)
 		sub := o.sub(primaryTuple)
 
-		key := sub.Pack(tuple.Tuple{field.Name})
+		//key := sub.Pack(tuple.Tuple{field.Name})
 
 		//isSet := p.tr.GetKey(fdb.FirstGreaterThan(sub))
 		needed := o.need(p.tr, sub)
@@ -504,8 +504,11 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 			}
 			var oldObject *Struct
 			oldObject = structAny(value.Interface())
-
-			p.tr.Set(key, bytesValue)
+			
+			err = o.doWrite(p.tr, sub, primaryTuple, input, oldObject, false)
+			if err != nil {
+				p.fail(err)
+			}
 
 			for _, index := range o.indexes {
 				for _, indexField := range index.fields {
