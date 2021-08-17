@@ -2,6 +2,7 @@ package stored
 
 import (
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
 	"reflect"
 	"strings"
 
@@ -370,23 +371,37 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
 	sub := o.primary.Sub(primaryTuple...)
-	
+	//sub := o.sub(primaryTuple)
+
 	p := o.promiseErr()
 	p.do(func() Chain {
-		val, err := field.ToBytes(incVal)
-		if err != nil {
-			return p.fail(err)
-		}
-
 		if field.mutable {
+			val, err := field.ToBytes(incVal)
+			if err != nil {
+				return p.fail(err)
+			}
 			incKey := sub.Pack(tuple.Tuple{field.Name})
 			p.tr.Add(incKey, val)
 		} else {
 			input := structEditable(objOrID)
-			input.setField(field, val)
-			immutablesValue := input.GetImmutableFieldsBytes(o.immutableFields)
-			if immutablesValue != nil {
-				p.tr.Set(sub.Pack(tuple.Tuple{"*"}), immutablesValue)
+			return func() Chain {
+				combinedFields := map[string]interface{}{}
+				
+				for name, f := range o.immutableFields {
+					if fieldName == name {
+						input.incField(field, incVal)
+					}
+					value := input.value.Field(f.Num)
+					combinedFields[name] = value.Interface()
+				}
+
+				packedFields, err := msgpack.Marshal(combinedFields)
+				if err != nil {
+					return p.fail(err)
+				}
+				p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)
+				
+				return p.done(nil)
 			}
 		}
 
@@ -396,9 +411,7 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 	return p
 }
 
-// 1) mutable поля
-// 2) прочитать это поле через mspack (int, byte...) -- примитимное поле
-// 3) записывать 
+// доставть все поля, инкретметишь отдельное поле и записать заново 
 
 // IncGetField increment field and return new value
 // moved to IncFieldAtomic

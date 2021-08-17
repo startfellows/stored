@@ -53,7 +53,11 @@ func (s *Struct) incField(field *Field, toInc interface{}) {
 	case reflect.Uint:
 		s.setObject(objField, inter.(uint)+toInc.(uint))
 	case reflect.Int32:
-		s.setObject(objField, inter.(int32)+toInc.(int32))
+		convertInc, ok := toInc.(int32)
+		if !ok {
+			convertInc = int32(toInc.(int))
+		}
+		s.setObject(objField, inter.(int32)+convertInc)
 	case reflect.Uint32:
 		s.setObject(objField, inter.(uint32)+toInc.(uint32))
 	case reflect.Int64:
