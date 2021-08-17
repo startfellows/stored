@@ -368,21 +368,37 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 // would not increment field of passed object, take care
 func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal interface{}) *PromiseErr {
 	field := o.field(fieldName)
-	//primaryID := o.GetPrimaryField().fromAnyInterface(objOrID)
 	primaryTuple := o.getPrimaryTuple(objOrID)
 	sub := o.primary.Sub(primaryTuple...)
+	
 	p := o.promiseErr()
 	p.do(func() Chain {
-		incKey := sub.Pack(tuple.Tuple{field.Name})
 		val, err := field.ToBytes(incVal)
 		if err != nil {
 			return p.fail(err)
 		}
-		p.tr.Add(incKey, val)
+
+		if field.mutable {
+			incKey := sub.Pack(tuple.Tuple{field.Name})
+			p.tr.Add(incKey, val)
+		} else {
+			input := structEditable(objOrID)
+			input.setField(field, val)
+			immutablesValue := input.GetImmutableFieldsBytes(o.immutableFields)
+			if immutablesValue != nil {
+				p.tr.Set(sub.Pack(tuple.Tuple{"*"}), immutablesValue)
+			}
+		}
+
 		return p.ok()
+
 	})
 	return p
 }
+
+// 1) mutable поля
+// 2) прочитать это поле через mspack (int, byte...) -- примитимное поле
+// 3) записывать 
 
 // IncGetField increment field and return new value
 // moved to IncFieldAtomic
@@ -504,7 +520,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 			}
 			var oldObject *Struct
 			oldObject = structAny(value.Interface())
-			
+
 			err = o.doWrite(p.tr, sub, primaryTuple, input, oldObject, false)
 			if err != nil {
 				p.fail(err)
