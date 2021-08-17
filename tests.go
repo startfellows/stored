@@ -62,6 +62,7 @@ type bigUser struct {
 	Subscription bool           `stored:"subscription"`
 	Sandbox      bool           `stored:"sandbox"`
 	Username     string         `stored:"username"`
+	Counter      int32          `stored:"counter"`
 }
 
 type extra struct {
@@ -706,6 +707,37 @@ func testsEditField(dbUser *Object) error {
 	return nil
 }
 
+func testIncFieldUnsafe(dbUser *Object) error {
+	u := bigUser{
+		Login:   "wow",
+		Counter: 5,
+	}
+	err := dbUser.Add(&u).Err()
+	if err != nil {
+		return err
+	}
+
+	err = dbUser.IncFieldUnsafe(&u, "counter", 1).Err()
+	if err != nil {
+		return err
+	}
+
+	if u.Counter == 5 {
+		return errors.New("score has incorrect value after Increment")
+	}
+
+	err = dbUser.IncFieldUnsafe(&u, "counter", -1).Err()
+	if err != nil {
+		return err
+	}
+
+	if u.Counter == 6 {
+		return errors.New("score has incorrect value after Increment")
+	}
+
+	return nil
+}
+
 func testsMultiPrimary(dbMessage *Object, n2nMessageUser *Relation, n2nUser *Object) error {
 	var err error
 	msg := message{
@@ -1156,6 +1188,7 @@ func TestsRun(db *Cluster) {
 	assert("single_field", testsSingleField(dir))
 
 	assert("search_autocomplete_search", testsAutocompleteSearch(dbBigUser.Done()))
+	assert("update_inc_field_unsafe", testIncFieldUnsafe(dbBigUser.Done()))
 
 	fmt.Println("elapsed", time.Since(start))
 }

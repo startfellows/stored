@@ -384,25 +384,21 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 			p.tr.Add(incKey, val)
 		} else {
 			input := structEditable(objOrID)
-			return func() Chain {
-				combinedFields := map[string]interface{}{}
-				
-				for name, f := range o.immutableFields {
-					if fieldName == name {
-						input.incField(field, incVal)
-					}
-					value := input.value.Field(f.Num)
-					combinedFields[name] = value.Interface()
-				}
+			combinedFields := map[string]interface{}{}
 
-				packedFields, err := msgpack.Marshal(combinedFields)
-				if err != nil {
-					return p.fail(err)
+			for name, f := range o.immutableFields {
+				if fieldName == name {
+					input.incField(field, incVal)
 				}
-				p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)
-				
-				return p.done(nil)
+				value := input.value.Field(f.Num)
+				combinedFields[name] = value.Interface()
 			}
+
+			packedFields, err := msgpack.Marshal(combinedFields)
+			if err != nil {
+				return p.fail(err)
+			}
+			p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)
 		}
 
 		return p.ok()
@@ -410,8 +406,6 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 	})
 	return p
 }
-
-// доставть все поля, инкретметишь отдельное поле и записать заново 
 
 // IncGetField increment field and return new value
 // moved to IncFieldAtomic
