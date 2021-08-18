@@ -43,6 +43,24 @@ func setMsgPackSliceObject(obj reflect.Value, value interface{}) {
 	obj.Set(newSlice)
 }
 
+func setMsgPackByteSliceObject(obj reflect.Value, value interface{}) {
+	valueSlice, ok := value.([]byte)
+	if !ok {
+		fmt.Println("Filling slice with value slice failed: value slice empty or non existing")
+		return
+	}
+
+	newSlice := reflect.MakeSlice(obj.Type(), 0, len(valueSlice))
+	for _, i := range valueSlice {
+		sliceItem := reflect.New(obj.Type().Elem())
+		setMsgPackObject(sliceItem, i)
+
+		newSlice = reflect.Append(newSlice, reflect.Indirect(sliceItem))
+	}
+
+	obj.Set(newSlice)
+}
+
 // setMsgPackStructObject setting structObj as new struct from value
 func setMsgPackStructObject(structObj reflect.Value, value interface{}) {
 	valueMap, ok := value.(map[string]interface{})
@@ -147,7 +165,11 @@ func setMsgPackObject(obj reflect.Value, value interface{}) {
 
 	switch obj.Kind() {
 	case reflect.Slice:
-		setMsgPackSliceObject(obj, value)
+		if obj.Type() == reflect.TypeOf([]byte(nil)) {
+			setMsgPackByteSliceObject(obj, value)
+		} else {
+			setMsgPackSliceObject(obj, value)
+		}
 	case reflect.Struct:
 		setMsgPackStructObject(obj, value)
 	case reflect.Map:
