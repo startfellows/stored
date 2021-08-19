@@ -278,8 +278,8 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 	p := r.host.promiseInt64()
 	p.doRead(func() Chain {
 		clientPrimary := r.client.getPrimaryTuple(clientOrID)
+		
 		row, err := r.getClientCounter(clientPrimary, p.readTr).Get()
-
 		if row == nil {
 			return p.fail(ErrNotFound)
 		}
@@ -287,13 +287,8 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 			return p.fail(err)
 		}
 
-		var value interface{}
-		err = msgpack.Unmarshal(row, &value)
-		if err != nil {
-			return p.fail(err)
-		}
-
-		return p.done(value.(int64))
+		value := int64(row[8])
+		return p.done(value)
 	})
 
 	return p
