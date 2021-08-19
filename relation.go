@@ -144,9 +144,7 @@ func (r *Relation) ClientData(fieldName string) {
 
 func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, value int64) {
 	if r.counterClient != nil {
-
-		r.counterClient.object.IncFieldUnsafe(r.counterClient.object, r.counterClient, value)
-
+		
 		sub := r.counterClient.object.sub(clientPrimary)
 		b := tr.Get(r.counterClient.getKey(sub)).MustGet()
 
