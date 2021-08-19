@@ -9,6 +9,7 @@ import (
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
+	"github.com/vmihailenco/msgpack"
 )
 
 // Object is an abstraction for working with objects
@@ -363,7 +364,7 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 	return o.primary.Sub(primaryTuple...)
 }
 
-func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, incVal interface{}) *PromiseErr {
+func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, incVal int64) *PromiseErr {
 
 	sub := o.primary.Sub(primaryTuple...)
 	//sub := o.sub(primaryTuple)
@@ -379,23 +380,43 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 			p.tr.Add(incKey, val)
 		} else {
 			//input := structEditable(objOrID)
-			// if we are working with immutable, it is enoutgh to fetch only * key from the fdb object structure
-
-			/*combinedFields := map[string]interface{}{}
-
-			for name, f := range o.immutableFields {
-				if field.Name == name {
-					input.incField(field, incVal)
+			immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
+			futureKey := p.tr.Get(immutableFieldsKey)
+			return func() Chain {
+				allData, err := futureKey.Get()
+				if err != nil {
+					return p.fail(err)
 				}
-				value := input.value.Field(f.Num)
-				combinedFields[name] = value.Interface()
+				immutableFields := map[string]interface{}{}
+				err = msgpack.Unmarshal(allData, &immutableFields)
+				if err != nil {
+					return p.fail(err)
+				}
+				switch v := immutableFields[field.Name].(type) {
+				case int:
+					immutableFields[field.Name] = v + int(incVal)
+				case int8:
+					immutableFields[field.Name] = v + int8(incVal)
+				case int64:
+					immutableFields[field.Name] = v + int64(incVal)
+				case int32:
+					immutableFields[field.Name] = v + int32(incVal)
+				case uint:
+					immutableFields[field.Name] = v + uint(incVal)
+				case uint8:
+					immutableFields[field.Name] = v + uint8(incVal)
+				case uint64:
+					immutableFields[field.Name] = v + uint64(incVal)
+				case uint32:
+					immutableFields[field.Name] = v + uint32(incVal)
+				}
+				packedFields, err := msgpack.Marshal(immutableFields)
+				if err != nil {
+					return p.fail(err)
+				}
+				p.tr.Set(immutableFieldsKey, packedFields)
+				return p.ok()
 			}
-
-			packedFields, err := msgpack.Marshal(combinedFields)
-			if err != nil {
-				return p.fail(err)
-			}
-			p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)*/
 		}
 
 		return p.ok()
@@ -407,7 +428,7 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 // IncFieldUnsafe increment field  of an object
 // does not implement indexes in the moment
 // would not increment field of passed object, take care
-func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal interface{}) *PromiseErr {
+func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal int64) *PromiseErr {
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
 
