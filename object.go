@@ -2,7 +2,6 @@ package stored
 
 import (
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"reflect"
 	"strings"
 
@@ -364,12 +363,8 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 	return o.primary.Sub(primaryTuple...)
 }
 
-// IncFieldUnsafe increment field  of an object
-// does not implement indexes in the moment
-// would not increment field of passed object, take care
-func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal interface{}) *PromiseErr {
-	field := o.field(fieldName)
-	primaryTuple := o.getPrimaryTuple(objOrID)
+func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, incVal interface{}) *PromiseErr {
+
 	sub := o.primary.Sub(primaryTuple...)
 	//sub := o.sub(primaryTuple)
 
@@ -383,11 +378,13 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 			incKey := sub.Pack(tuple.Tuple{field.Name})
 			p.tr.Add(incKey, val)
 		} else {
-			input := structEditable(objOrID)
-			combinedFields := map[string]interface{}{}
+			//input := structEditable(objOrID)
+			// if we are working with immutable, it is enoutgh to fetch only * key from the fdb object structure
+
+			/*combinedFields := map[string]interface{}{}
 
 			for name, f := range o.immutableFields {
-				if fieldName == name {
+				if field.Name == name {
 					input.incField(field, incVal)
 				}
 				value := input.value.Field(f.Num)
@@ -398,13 +395,23 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 			if err != nil {
 				return p.fail(err)
 			}
-			p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)
+			p.tr.Set(sub.Pack(tuple.Tuple{"*"}), packedFields)*/
 		}
 
 		return p.ok()
 
 	})
 	return p
+}
+
+// IncFieldUnsafe increment field  of an object
+// does not implement indexes in the moment
+// would not increment field of passed object, take care
+func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal interface{}) *PromiseErr {
+	field := o.field(fieldName)
+	primaryTuple := o.getPrimaryTuple(objOrID)
+
+	return o.incFieldUnsafeByTuple(primaryTuple, field, incVal)
 }
 
 // IncGetField increment field and return new value
