@@ -143,43 +143,18 @@ func (r *Relation) ClientData(fieldName string) {
 }
 
 func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, value int64) {
-	if r.counterClient != nil {
-		
-		sub := r.counterClient.object.sub(clientPrimary)
-		b := tr.Get(r.counterClient.getKey(sub)).MustGet()
-
-		var i int64
-		err := msgpack.Unmarshal(b, &i)
-		if err != nil {
-			panic(err)
-		}
-
-		i += value
-
-		b, err = msgpack.Marshal(i)
-		if err != nil {
-			panic(err)
-		}
-
-		tr.Set(r.counterClient.getKey(sub), b)
-	} else {
-		var binVal []byte
-		if value == -1 {
-			binVal = countDec
-		} else if value == 1 {
-			binVal = countInc
-		} else {
-			panic("incompatible value for client counter")
-		}
-
-		tr.Add(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary), binVal)
-	}
+	field := r.counterClient.object.field(r.counterClient.Name)
+	r.counterClient.object.incFieldUnsafeByTuple(clientPrimary, field, value)
 }
 
 func (r *Relation) getClientCounter(clientPrimary tuple.Tuple, tr fdb.ReadTransaction) fdb.FutureByteSlice {
 	if r.counterClient != nil {
 		sub := r.counterClient.object.sub(clientPrimary)
-		return tr.Get(r.counterClient.getKey(sub))
+		if r.counterClient.mutable {
+			return tr.Get(r.counterClient.getKey(sub))
+		} else {
+			return tr.Get(sub.Pack(tuple.Tuple{"*"}))
+		}
 	}
 	return tr.Get(r.infoDir.Sub(keyRelClientCount).Pack(clientPrimary))
 }
@@ -227,7 +202,7 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 			}
 			if val == nil { // not exists increment here
 				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-				//r.changeClientCounter(clientPrimary, p.tr, 1)
+				r.changeClientCounter(clientPrimary, p.tr, 1)
 			}
 		}
 
@@ -280,19 +255,22 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 	p := r.host.promiseInt64()
 	p.doRead(func() Chain {
 		clientPrimary := r.client.getPrimaryTuple(clientOrID)
-		
 		row, err := r.getClientCounter(clientPrimary, p.readTr).Get()
+
+		combinedFields := map[string]interface{}{}
+		err = msgpack.Unmarshal(row, &combinedFields)
 		if row == nil {
 			return p.fail(ErrNotFound)
 		}
 		if err != nil {
 			return p.fail(err)
 		}
-		
+
 		var resp int64
-		err = msgpack.Unmarshal(row, &resp)
-		if err != nil {
-			p.fail(err)
+		for fieldName, value := range combinedFields {
+			if fieldName == r.counterClient.Name {
+				resp = value.(int64)
+			}
 		}
 		return p.done(resp)
 	})

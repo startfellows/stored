@@ -365,9 +365,7 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 }
 
 func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, incVal int64) *PromiseErr {
-
 	sub := o.primary.Sub(primaryTuple...)
-	//sub := o.sub(primaryTuple)
 
 	p := o.promiseErr()
 	p.do(func() Chain {
@@ -378,10 +376,11 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 			}
 			incKey := sub.Pack(tuple.Tuple{field.Name})
 			p.tr.Add(incKey, val)
+
 		} else {
-			//input := structEditable(objOrID)
 			immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
 			futureKey := p.tr.Get(immutableFieldsKey)
+
 			return func() Chain {
 				allData, err := futureKey.Get()
 				if err != nil {
@@ -392,6 +391,7 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 				if err != nil {
 					return p.fail(err)
 				}
+
 				switch v := immutableFields[field.Name].(type) {
 				case int:
 					immutableFields[field.Name] = v + int(incVal)
@@ -414,6 +414,7 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 				if err != nil {
 					return p.fail(err)
 				}
+
 				p.tr.Set(immutableFieldsKey, packedFields)
 				return p.ok()
 			}
