@@ -142,9 +142,9 @@ func (r *Relation) ClientData(fieldName string) {
 	r.clientDataField = field
 }
 
-func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, tr fdb.Transaction, value int64) {
+func (r *Relation) changeClientCounter(clientPrimary tuple.Tuple, p PromiseAny, value int64) func() Chain {
 	field := r.counterClient.object.field(r.counterClient.Name)
-	r.counterClient.object.incFieldUnsafeByTuple(clientPrimary, field, value)
+	return r.counterClient.object.incFieldUnsafeByTuple(p.self(), clientPrimary, field, value)
 }
 
 func (r *Relation) getClientCounter(clientPrimary tuple.Tuple, tr fdb.ReadTransaction) fdb.FutureByteSlice {
@@ -202,7 +202,7 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 			}
 			if val == nil { // not exists increment here
 				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-				r.changeClientCounter(clientPrimary, p.tr, 1)
+				return r.changeClientCounter(clientPrimary, p, 1)
 			}
 		}
 

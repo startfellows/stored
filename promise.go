@@ -25,6 +25,8 @@ type Promise struct {
 // PromiseAny describes any type of promise
 type PromiseAny interface {
 	self() *Promise
+	fail(err error) Chain
+	done(resp interface{}) Chain
 }
 
 func (p *Promise) do(chain Chain) {

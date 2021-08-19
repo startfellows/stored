@@ -364,66 +364,61 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 	return o.primary.Sub(primaryTuple...)
 }
 
-func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, incVal int64) *PromiseErr {
+func (o *Object) incFieldUnsafeByTuple(p *Promise, primaryTuple tuple.Tuple, field *Field, incVal int64) func() Chain {
 	sub := o.primary.Sub(primaryTuple...)
 
-	p := o.promiseErr()
-	p.do(func() Chain {
-		if field.mutable {
-			val, err := field.ToBytes(incVal)
+	if field.mutable {
+		val, err := field.ToBytes(incVal)
+		if err != nil {
+			return p.fail(err)
+		}
+		incKey := sub.Pack(tuple.Tuple{field.Name})
+		p.tr.Add(incKey, val)
+
+	} else {
+		immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
+		futureKey := p.tr.Get(immutableFieldsKey)
+
+		return func() Chain {
+			allData, err := futureKey.Get()
 			if err != nil {
 				return p.fail(err)
 			}
-			incKey := sub.Pack(tuple.Tuple{field.Name})
-			p.tr.Add(incKey, val)
-
-		} else {
-			immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
-			futureKey := p.tr.Get(immutableFieldsKey)
-
-			return func() Chain {
-				allData, err := futureKey.Get()
-				if err != nil {
-					return p.fail(err)
-				}
-				immutableFields := map[string]interface{}{}
-				err = msgpack.Unmarshal(allData, &immutableFields)
-				if err != nil {
-					return p.fail(err)
-				}
-
-				switch v := immutableFields[field.Name].(type) {
-				case int:
-					immutableFields[field.Name] = v + int(incVal)
-				case int8:
-					immutableFields[field.Name] = v + int8(incVal)
-				case int64:
-					immutableFields[field.Name] = v + int64(incVal)
-				case int32:
-					immutableFields[field.Name] = v + int32(incVal)
-				case uint:
-					immutableFields[field.Name] = v + uint(incVal)
-				case uint8:
-					immutableFields[field.Name] = v + uint8(incVal)
-				case uint64:
-					immutableFields[field.Name] = v + uint64(incVal)
-				case uint32:
-					immutableFields[field.Name] = v + uint32(incVal)
-				}
-				packedFields, err := msgpack.Marshal(immutableFields)
-				if err != nil {
-					return p.fail(err)
-				}
-
-				p.tr.Set(immutableFieldsKey, packedFields)
-				return p.ok()
+			immutableFields := map[string]interface{}{}
+			err = msgpack.Unmarshal(allData, &immutableFields)
+			if err != nil {
+				return p.fail(err)
 			}
+
+			switch v := immutableFields[field.Name].(type) {
+			case int:
+				immutableFields[field.Name] = v + int(incVal)
+			case int8:
+				immutableFields[field.Name] = v + int8(incVal)
+			case int64:
+				immutableFields[field.Name] = v + int64(incVal)
+			case int32:
+				immutableFields[field.Name] = v + int32(incVal)
+			case uint:
+				immutableFields[field.Name] = v + uint(incVal)
+			case uint8:
+				immutableFields[field.Name] = v + uint8(incVal)
+			case uint64:
+				immutableFields[field.Name] = v + uint64(incVal)
+			case uint32:
+				immutableFields[field.Name] = v + uint32(incVal)
+			}
+			packedFields, err := msgpack.Marshal(immutableFields)
+			if err != nil {
+				return p.fail(err)
+			}
+
+			p.tr.Set(immutableFieldsKey, packedFields)
+			return p.ok()
 		}
+	}
 
-		return p.ok()
-
-	})
-	return p
+	return p.ok()
 }
 
 // IncFieldUnsafe increment field  of an object
@@ -432,8 +427,9 @@ func (o *Object) incFieldUnsafeByTuple(primaryTuple tuple.Tuple, field *Field, i
 func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal int64) *PromiseErr {
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
-
-	return o.incFieldUnsafeByTuple(primaryTuple, field, incVal)
+	p := o.promiseErr()
+	p.do(o.incFieldUnsafeByTuple(p.self(), primaryTuple, field, incVal))
+	return p
 }
 
 // IncGetField increment field and return new value
