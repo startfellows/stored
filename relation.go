@@ -286,9 +286,13 @@ func (r *Relation) GetHostsCount(clientOrID interface{}) *Promise {
 		if err != nil {
 			return p.fail(err)
 		}
-
-		value := int64(row[8])
-		return p.done(value)
+		
+		var resp int64
+		err = msgpack.Unmarshal(row, &resp)
+		if err != nil {
+			p.fail(err)
+		}
+		return p.done(resp)
 	})
 
 	return p
