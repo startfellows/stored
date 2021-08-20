@@ -428,7 +428,9 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
 	p := o.promiseErr()
-	p.do(o.incFieldUnsafeByTuple(p.self(), primaryTuple, field, incVal))
+	p.do(func() Chain {
+		return o.incFieldUnsafeByTuple(p.self(), primaryTuple, field, incVal)
+	})
 	return p
 }
 

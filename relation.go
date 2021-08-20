@@ -173,8 +173,7 @@ func (r *Relation) Add(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 		}
 		if r.counter { // increment if not exists
 			p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-
-			r.changeClientCounter(clientPrimary, p.tr, 1)
+			r.changeClientCounter(clientPrimary, p, 1)()
 		}
 
 		// getting data to store inside relation kv
@@ -201,8 +200,9 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 				return p.fail(err)
 			}
 			if val == nil { // not exists increment here
-				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
-				return r.changeClientCounter(clientPrimary, p, 1)
+				p.tr.Add(r.hostDir.Sub(hostPrimary...).Pack(clientPrimary), countInc)
+				//p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
+				return r.changeClientCounter(clientPrimary, p, 1)()
 			}
 		}
 
@@ -233,7 +233,7 @@ func (r *Relation) Delete(hostOrID interface{}, clientOrID interface{}) *Promise
 			}
 			if val != nil { // exists decrement here
 				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countDec)
-				r.changeClientCounter(clientPrimary, p.tr, -1)
+				r.changeClientCounter(clientPrimary, p, -1)()
 			}
 		}
 
