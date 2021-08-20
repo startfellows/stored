@@ -364,7 +364,8 @@ func (o *Object) subspace(objOrID interface{}) subspace.Subspace {
 	return o.primary.Sub(primaryTuple...)
 }
 
-func (o *Object) incFieldUnsafeByTuple(p *Promise, primaryTuple tuple.Tuple, field *Field, incVal int64) func() Chain {
+func (o *Object) incFieldUnsafeByTuple(pAny PromiseAny, primaryTuple tuple.Tuple, field *Field, incVal int64) func() Chain {
+	p := pAny.self()
 	sub := o.primary.Sub(primaryTuple...)
 
 	if field.mutable {
@@ -428,9 +429,7 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
 	p := o.promiseErr()
-	p.do(func() Chain {
-		return o.incFieldUnsafeByTuple(p.self(), primaryTuple, field, incVal)
-	})
+	p.do(o.incFieldUnsafeByTuple(p, primaryTuple, field, incVal))
 	return p
 }
 

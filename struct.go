@@ -226,6 +226,7 @@ func (s *Struct) GetImmutableFieldsBytes(fields map[string]*Field) []byte {
 
 // GetMutableFieldBytes return mutable field as byteSlice
 func (s *Struct) GetMutableFieldBytes(field *Field) []byte {
+	//if field.SimpleType()
 	value := s.value.Field(field.Num)
 
 	data, err := msgpack.Marshal(value.Interface())
