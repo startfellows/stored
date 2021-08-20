@@ -200,8 +200,7 @@ func (r *Relation) Set(hostOrID interface{}, clientOrID interface{}) *PromiseErr
 				return p.fail(err)
 			}
 			if val == nil { // not exists increment here
-				p.tr.Add(r.hostDir.Sub(hostPrimary...).Pack(clientPrimary), countInc)
-				//p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
+				p.tr.Add(r.infoDir.Sub(keyRelHostCount).Pack(hostPrimary), countInc)
 				return r.changeClientCounter(clientPrimary, p, 1)()
 			}
 		}
