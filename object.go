@@ -529,36 +529,56 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 	input := structAny(objectPtr)
 	field := o.field(fieldName)
 	p := o.promiseErr()
+	
 	p.do(func() Chain {
-		//bytesValue := input.GetMutableFieldBytes(field)
-		//sub := input.getSubspace(o)
 		primaryTuple := input.getPrimary(o)
 		sub := o.sub(primaryTuple)
-
-		//key := sub.Pack(tuple.Tuple{field.Name})
-
-		//isSet := p.tr.GetKey(fdb.FirstGreaterThan(sub))
 		needed := o.need(p.tr, sub)
 
 		return func() Chain { // better to get first key
-			/*firstKey, err := isSet.Get()
-			if err != nil {
-				return p.fail(err)
+			if field.mutable {
+				bytesValue := input.GetMutableFieldBytes(field)
+				key := sub.Pack(tuple.Tuple{field.Name})
+				p.tr.Set(key, bytesValue)
+
+			} else {
+				immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
+				futureKey := p.tr.Get(immutableFieldsKey)
+				
+				return func() Chain {
+					allData, err := futureKey.Get()
+					if err != nil {
+						return p.fail(err)
+					}
+					immutableFields := map[string]interface{}{}
+					err = msgpack.Unmarshal(allData, &immutableFields)
+					if err != nil {
+						return p.fail(err)
+					}
+
+					for key, _ := range immutableFields {
+						if key == field.Name {
+							data := input.value.Field(field.Num)
+							immutableFields[key] = data.Interface()
+						}
+					}
+
+					packedFields, err := msgpack.Marshal(immutableFields)
+					if err != nil {
+						return p.fail(err)
+					}
+
+					p.tr.Set(immutableFieldsKey, packedFields)
+					return p.ok()
+				}
 			}
-			if !sub.Contains(firstKey) {
-				return p.fail(ErrNotFound)
-			}*/
 			value, err := needed.fetch()
 			if err != nil {
 				return p.fail(err)
 			}
+			
 			var oldObject *Struct
 			oldObject = structAny(value.Interface())
-
-			err = o.doWrite(p.tr, sub, primaryTuple, input, oldObject, false)
-			if err != nil {
-				p.fail(err)
-			}
 
 			for _, index := range o.indexes {
 				for _, indexField := range index.fields {
