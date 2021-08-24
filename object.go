@@ -464,13 +464,14 @@ func (o *Object) IncGetField(objOrID interface{}, fieldName string, incVal inter
 // moved to ChangeField
 func (o *Object) UpdateField(objOrID interface{}, fieldName string, callback func(value interface{}) (interface{}, error)) *Promise {
 	field := o.field(fieldName)
-
 	p := o.promise()
+
 	p.do(func() Chain {
 		sub := o.subspace(objOrID)
-		key := sub.Pack(tuple.Tuple{field.Name})
-		fieldGet := p.tr.Get(key)
-		return func() Chain {
+
+		if field.primary {
+			key := sub.Pack(tuple.Tuple{field.Name})
+			fieldGet := p.tr.Get(key)
 			val, err := fieldGet.Get()
 			if err != nil {
 				return p.fail(err)
@@ -478,16 +479,53 @@ func (o *Object) UpdateField(objOrID interface{}, fieldName string, callback fun
 			if val == nil {
 				return p.fail(ErrNotFound)
 			}
+
 			newValue, err := callback(field.ToInterface(val))
 			if err != nil {
 				return p.fail(err)
 			}
-			bytesValue, err := field.ToBytes(newValue)
-			if err != nil {
-				return p.fail(err)
+
+			return func() Chain {
+				bytesValue, err := field.ToBytes(newValue)
+				if err != nil {
+					return p.fail(err)
+				}
+				p.tr.Set(key, bytesValue)
+				return p.done(nil)
 			}
-			p.tr.Set(key, bytesValue)
-			return p.done(nil)
+		} else {
+			immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
+			futureKey := p.tr.Get(immutableFieldsKey)
+
+			return func() Chain {
+				allData, err := futureKey.Get()
+				if err != nil {
+					return p.fail(err)
+				}
+				immutableFields := map[string]interface{}{}
+				err = msgpack.Unmarshal(allData, &immutableFields)
+				if err != nil {
+					return p.fail(err)
+				}
+
+				for key, value := range immutableFields {
+					if key == field.Name {
+						newValue, err := callback(value)
+						if err != nil {
+							return p.fail(err)
+						}
+						immutableFields[key] = newValue
+					}
+				}
+
+				packedFields, err := msgpack.Marshal(immutableFields)
+				if err != nil {
+					return p.fail(err)
+				}
+
+				p.tr.Set(immutableFieldsKey, packedFields)
+				return p.ok()
+			}
 		}
 	})
 	return p
@@ -529,7 +567,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 	input := structAny(objectPtr)
 	field := o.field(fieldName)
 	p := o.promiseErr()
-	
+
 	p.do(func() Chain {
 		primaryTuple := input.getPrimary(o)
 		sub := o.sub(primaryTuple)
@@ -544,7 +582,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 			} else {
 				immutableFieldsKey := sub.Pack(tuple.Tuple{"*"})
 				futureKey := p.tr.Get(immutableFieldsKey)
-				
+
 				return func() Chain {
 					allData, err := futureKey.Get()
 					if err != nil {
@@ -576,7 +614,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 			if err != nil {
 				return p.fail(err)
 			}
-			
+
 			var oldObject *Struct
 			oldObject = structAny(value.Interface())
 
