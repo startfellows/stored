@@ -469,7 +469,7 @@ func (o *Object) UpdateField(objOrID interface{}, fieldName string, callback fun
 	p.do(func() Chain {
 		sub := o.subspace(objOrID)
 
-		if field.primary {
+		if field.mutable {
 			key := sub.Pack(tuple.Tuple{field.Name})
 			fieldGet := p.tr.Get(key)
 			val, err := fieldGet.Get()
