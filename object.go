@@ -822,7 +822,7 @@ func (o *Object) getKeyLimit(limit int) int {
 	if limit == 0 {
 		return 0
 	}
-	return limit * o.keysCount
+	return limit * (1 + len(o.mutableFields))
 }
 
 func (o *Object) wrapObjectList(rows []valueRaw) (*Slice, error) {

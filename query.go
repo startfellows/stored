@@ -275,14 +275,13 @@ func (q *Query) execute() *PromiseSlice {
 			lastTuple = primaryTuple
 			rowsNum++
 		}
-		if rowsNum != 0 && (q.limit == 0 || slice.Len() < q.limit) {
+		if rowsNum != 0 && (q.limit == 0 || slice.Len() > q.limit) {
 			value := Value{
 				object: q.object,
 			}
 			value.fromRaw(elem)
 			value.fromKeyTuple(lastTuple)
 			slice.Append(&value)
-			//res = append(res, elem)
 		}
 
 		if !reflect.DeepEqual(q.from, lastTuple) {
