@@ -28,7 +28,6 @@ func checkNilPtrObject(obj reflect.Value) reflect.Value {
 func setMsgPackSliceObject(obj reflect.Value, value interface{}) {
 	valueSlice, ok := value.([]interface{})
 	if !ok {
-		fmt.Println("Filling slice with value slice failed: value slice empty or non existing")
 		return
 	}
 
@@ -46,7 +45,6 @@ func setMsgPackSliceObject(obj reflect.Value, value interface{}) {
 func setMsgPackByteSliceObject(obj reflect.Value, value interface{}) {
 	valueSlice, ok := value.([]byte)
 	if !ok {
-		fmt.Println("Filling slice with value slice failed: value slice empty or non existing")
 		return
 	}
 
