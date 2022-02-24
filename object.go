@@ -242,7 +242,7 @@ func (o *Object) promiseInt64() *Promise {
 
 // Write writes data, only if row already exist
 func (o *Object) Write(data interface{}) *PromiseErr {
-	fmt.Println("[STORED] Write:", o.name)
+	//fmt.Println("[STORED] Write:", o.name)
 
 	input := structAny(data)
 	p := o.promiseErr()
@@ -280,7 +280,7 @@ func (o *Object) Write(data interface{}) *PromiseErr {
 
 // Update writes data, only if row already exist
 func (o *Object) Update(data interface{}, callback func() error) *PromiseErr {
-	fmt.Println("[STORED] Update:", o.name)
+	//fmt.Println("[STORED] Update:", o.name)
 
 	input := structEditable(data)
 	p := o.promiseErr()
@@ -324,7 +324,7 @@ func (o *Object) Update(data interface{}, callback func() error) *PromiseErr {
 
 // Set writes data, would return error if primary key is empty
 func (o *Object) Set(objectPtr interface{}) *PromiseErr {
-	fmt.Println("[STORED] Set:", o.name)
+	//fmt.Println("[STORED] Set:", o.name)
 
 	input := structAny(objectPtr)
 	p := o.promiseErr()
@@ -431,7 +431,7 @@ func (o *Object) incFieldUnsafeByTuple(p *Promise, primaryTuple tuple.Tuple, fie
 // does not implement indexes in the moment
 // would not increment field of passed object, take care
 func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal int64) *PromiseErr {
-	fmt.Println("[STORED] IncFieldUnsafe:", o.name)
+	//fmt.Println("[STORED] IncFieldUnsafe:", o.name)
 
 	field := o.field(fieldName)
 	primaryTuple := o.getPrimaryTuple(objOrID)
@@ -445,7 +445,7 @@ func (o *Object) IncFieldUnsafe(objOrID interface{}, fieldName string, incVal in
 // IncGetField increment field and return new value
 // moved to IncFieldAtomic
 func (o *Object) IncGetField(objOrID interface{}, fieldName string, incVal interface{}) *Promise {
-	fmt.Println("[STORED] IncGetField:", o.name)
+	//fmt.Println("[STORED] IncGetField:", o.name)
 
 	field := o.field(fieldName)
 
@@ -473,7 +473,7 @@ func (o *Object) IncGetField(objOrID interface{}, fieldName string, incVal inter
 // UpdateField updates object field via callback with old value
 // moved to ChangeField
 func (o *Object) UpdateField(objOrID interface{}, fieldName string, callback func(value interface{}) (interface{}, error)) *Promise {
-	fmt.Println("[STORED] UpdateField:", o.name)
+	//fmt.Println("[STORED] UpdateField:", o.name)
 
 	field := o.field(fieldName)
 	p := o.promise()
@@ -545,7 +545,7 @@ func (o *Object) UpdateField(objOrID interface{}, fieldName string, callback fun
 
 // GetField  will fill fetch the mutable field data, and fill the passed object
 func (o *Object) GetField(objectPtr interface{}, fieldName string) *PromiseErr {
-	fmt.Println("[STORED] GetField:", o.name)
+	//fmt.Println("[STORED] GetField:", o.name)
 
 	input := structEditable(objectPtr)
 	field := o.field(fieldName)
@@ -578,7 +578,7 @@ func (o *Object) GetField(objectPtr interface{}, fieldName string) *PromiseErr {
 
 // SetField sets any value to requested field
 func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
-	fmt.Println("[STORED] SetField:", o.name)
+	//fmt.Println("[STORED] SetField:", o.name)
 
 	input := structAny(objectPtr)
 	field := o.field(fieldName)
@@ -651,7 +651,7 @@ func (o *Object) SetField(objectPtr interface{}, fieldName string) *PromiseErr {
 
 // Add writes data even in primary key is empty, by setting it. Take a look at autoincrement tag
 func (o *Object) Add(data interface{}) *PromiseErr {
-	fmt.Println("[STORED] Add:", o.name)
+	//fmt.Println("[STORED] Add:", o.name)
 
 	input := structEditable(data)
 	p := o.promiseErr()
@@ -693,7 +693,7 @@ func (o *Object) Add(data interface{}) *PromiseErr {
 
 // Delete removes data
 func (o *Object) Delete(objOrID interface{}) *PromiseErr {
-	fmt.Println("[STORED] Delete:", o.name)
+	//fmt.Println("[STORED] Delete:", o.name)
 
 	//sub := o.Subspace(objOrID)
 	primaryTuple := o.getPrimaryTuple(objOrID)
@@ -740,7 +740,7 @@ func (o *Object) Delete(objOrID interface{}) *PromiseErr {
 
 // GetBy fetch one row using index bye name or name of the index field
 func (o *Object) GetBy(objectPtr interface{}, indexKeys ...string) *PromiseErr {
-	fmt.Println("[STORED] GetBy:", o.name)
+	//fmt.Println("[STORED] GetBy:", o.name)
 
 	input := structEditable(objectPtr)
 	indexKey := strings.Join(indexKeys, ",")
@@ -782,7 +782,7 @@ func (o *Object) GetBy(objectPtr interface{}, indexKeys ...string) *PromiseErr {
 
 // MultiGet fetch list of objects using primary id
 func (o *Object) MultiGet(sliceObjectPtr interface{}) *PromiseErr {
-	fmt.Println("[STORED] MultiGet:", o.name)
+	//fmt.Println("[STORED] MultiGet:", o.name)
 
 	inputs := o.editSlice(sliceObjectPtr)
 	p := o.promiseErr()
@@ -822,7 +822,7 @@ func (o *Object) valueFromRange(sub subspace.Subspace, res fdb.RangeResult) (*Va
 
 // Get fetch object using primary id
 func (o *Object) Get(objectPtr interface{}) *PromiseErr {
-	fmt.Println("[STORED] Get:", o.name)
+	//fmt.Println("[STORED] Get:", o.name)
 
 	input := structEditable(objectPtr)
 	p := o.promiseErr()
@@ -945,7 +945,7 @@ func (o *Object) sliceToKeys(data interface{}) []subspace.Subspace {
 
 // Clear clears all info in object storage
 func (o *Object) Clear() error {
-	fmt.Println("[STORED] Clear:", o.name)
+	//fmt.Println("[STORED] Clear:", o.name)
 
 	_, err := o.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
 		start, end := o.dir.FDBRangeKeys()
@@ -981,7 +981,7 @@ func (o *Object) Clear() error {
 
 // ClearAllIndexes clears all indexes data
 func (o *Object) ClearAllIndexes() error {
-	fmt.Println("[STORED] ClearAllIndexes:", o.name)
+	//fmt.Println("[STORED] ClearAllIndexes:", o.name)
 
 	_, err := o.db.Transact(func(tr fdb.Transaction) (ret interface{}, e error) {
 		for _, index := range o.indexes {
@@ -1025,7 +1025,7 @@ func (o *Object) Use(indexFieldNames ...string) *Query {
 
 // Reindex will go around all data and delete add every row
 func (o *Object) Reindex() {
-	fmt.Println("[STORED] Reindex:", o.name)
+	//fmt.Println("[STORED] Reindex:", o.name)
 
 	query := o.ListAll().Limit(100)
 	num := 0
@@ -1053,7 +1053,7 @@ func (o *Object) Reindex() {
 
 // Migrate will move date from one storage to another
 func (o *Object) Migrate(migrateTo *Object) {
-	fmt.Println("[STORED] Migrate:", o.name)
+	//fmt.Println("[STORED] Migrate:", o.name)
 
 	query := o.ListAll().Limit(1000)
 	num := 0
