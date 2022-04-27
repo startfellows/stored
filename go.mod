@@ -1,6 +1,6 @@
 module github.com/sflabsorg/stored
 
-go 1.16
+go 1.18
 
 require (
 	github.com/apple/foundationdb/bindings/go v0.0.0-20210602161635-7d8060e2fb2a
