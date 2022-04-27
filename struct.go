@@ -1,6 +1,8 @@
 package stored
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"reflect"
 
@@ -41,6 +43,33 @@ func (s *Struct) setField(field *Field, data []byte) {
 	}
 
 	objField.Set(reflect.Indirect(objValue))
+}
+
+// setFieldAutoIncr sets auto incr field value using bytes
+func (s *Struct) setFieldAutoIncr(field *Field, data []byte) {
+	objField := s.value.Field(field.Num)
+	if objField.Kind() == reflect.Ptr {
+		if objField.IsNil() {
+			// This code is working in main case
+			t := field.Value.Type().Elem()
+			value := reflect.New(t)
+			objField.Set(value) // creating empty object to fill it below
+
+			if len(data) == 0 { // no reason to go further id no data passed
+				return
+			}
+		}
+	}
+
+	var endian = binary.LittleEndian
+
+	reader := bytes.NewReader(data)
+	err := binary.Read(reader, endian, objField.Addr().Interface())
+	if err != nil {
+		fmt.Println("Decode to value failed", field.Name, field.object.name, len(data), err)
+	}
+
+	objField.Set(reflect.Indirect(objField))
 }
 
 // incField increment field value using interface value

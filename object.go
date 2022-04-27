@@ -661,7 +661,7 @@ func (o *Object) Add(data interface{}) *PromiseErr {
 				incKey := o.miscDir.Pack(tuple.Tuple{"ai", field.Name})
 				p.tr.Add(incKey, GetPlus(field.Kind))
 				autoIncrementValue := p.tr.Get(incKey).MustGet()
-				input.setField(field, autoIncrementValue)
+				input.setFieldAutoIncr(field, autoIncrementValue)
 			} else if field.GenID != 0 {
 				input.value.Field(field.Num).SetInt(field.GenerateID())
 				//input.setField(field, field.GenerateID()) //if generateID would be bytearray
